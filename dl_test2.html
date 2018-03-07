@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<script src="montreal_files/deeplearnlatest.js"></script>
+
+<script>
+// Picture color treatement gray and inverting
+var img = new Image();
+img.src = 'montreal_files/canvas.png';
+img.onload = function() {
+  draw(this);
+};
+
+function draw(img) {
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  img.style.display = 'none';
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var data = imageData.data;
+  var image = document.getElementById("image");
+  
+  image.src = canvas.toDataURL("image/png");
+};
+
+</script>
+
+</head>
+
+<body>
+    hello
+
+	<canvas id="canvas" width="300" height="227"></canvas>
+	
+	<div>
+	  <input id="graybtn" value="Gray" type="button">
+	  <input id="testbtn" value="Test" type="button">
+	</div>
+	<img id="image" src="" width="300">
+
+</body>
+
+<script> // Let's manipulate the image
+
+function gray(){
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var data = imageData.data;
+  len = data.length/4;
+
+  //t1 = dl.tensor1d(new Int32Array(data));
+  t1 = dl.fromPixels(imageData);
+  sum = t1.sum(2);
+  const b = dl.scalar(3);
+  avr = dl.cast(sum.div(b),'int32');
+  alpha = dl.fill([canvas.height,canvas.width],255,'int32');
+  stacks = dl.stack([avr,avr,avr,alpha],2);
+  
+  stacks.data().then(x => {
+	//var ctx = canvas.getContext('2d');
+	//var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  	//var data = imageData.data;
+	//data = x;
+	for(i=0;i<x.length;i++)
+		data[i] = x[i];
+        
+	ctx.putImageData(imageData,0,0);
+
+  });
+}
+
+
+  var graybtn = document.getElementById("graybtn");
+  graybtn.addEventListener('click', gray);
+  var testbtn = document.getElementById("testbtn");
+  testbtn.addEventListener('click', test);
+
+</script>
+
+</html>

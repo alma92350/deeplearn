@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<script src="montreal_files/deeplearnlatest.js"></script>
+
+<script>
+// Picture color treatement gray and inverting
+var img = new Image();
+img.src = 'montreal_files/canvas.png';
+img.onload = function() {
+  draw(this);
+};
+
+function draw(img) {
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  img.style.display = 'none';
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var data = imageData.data;
+  var image = document.getElementById("image");
+    
+  var invert = function() {
+    for (var i = 0; i < data.length; i += 4) {
+      data[i]     = 255 - data[i];     // red
+      data[i + 1] = 255 - data[i + 1]; // green
+      data[i + 2] = 255 - data[i + 2]; // blue
+    }
+    ctx.putImageData(imageData, 0, 0);
+    image.src = canvas.toDataURL("image/png");
+  };
+
+  var grayscale = function() {
+    for (var i = 0; i < data.length; i += 4) {
+      var avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      data[i]     = avg; // red
+      data[i + 1] = avg; // green
+      data[i + 2] = avg; // blue
+    }
+    ctx.putImageData(imageData, 0, 0);
+    image.src = canvas.toDataURL("image/png");
+  };
+
+  var invertbtn = document.getElementById('invertbtn');
+  invertbtn.addEventListener('click', invert);
+  var grayscalebtn = document.getElementById('grayscalebtn');
+  grayscalebtn.addEventListener('click', grayscale);
+}
+</script>
+
+</head>
+
+<body>
+    hello
+
+	<canvas id="canvas" width="300" height="227"></canvas>
+	
+	<div>
+	  <input id="grayscalebtn" value="Grayscale" type="button">
+	  <input id="invertbtn" value="Invert" type="button">
+	  <input id="testbtn" value="Test" type="button">
+	</div>
+	<img id="image" src="" width="300">
+
+</body>
+
+<script> // Let's manipulate the image
+
+function test(){
+  var canvas = document.getElementById('canvas');
+  var ctx = canvas.getContext('2d');
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var data = imageData.data;
+  len = data.length/4;
+
+  t1 = dl.tensor1d(new Int32Array(data));
+  t2 = t1.reshape([-1,4]);
+  t3 = t2.slice([0,0],[len,3]);
+  sum = t3.sum(1);
+  three = dl.fill([len],3);
+  avrg = dl.cast(sum.div(three),'int32');
+  alpha = dl.fill([len],255,'int32');
+  stacks = dl.stack([avrg,avrg,avrg,alpha]);
+  transp = stacks.transpose();
+  gray = transp.reshape([-1]);
+  
+  gray.data().then(x => {
+	var ctx = canvas.getContext('2d');
+	var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  	var data = imageData.data;
+	//data = x;
+	for(i=0;i<x.length;i++)
+		data[i] = x[i];
+        
+	ctx.putImageData(imageData,0,0);
+
+  });
+}
+
+
+  var testbtn = document.getElementById("testbtn");
+  testbtn.addEventListener('click', test);
+
+</script>
+
+</html>
