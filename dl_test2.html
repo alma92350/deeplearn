@@ -7,6 +7,7 @@
 // Picture color treatement gray and inverting
 var img = new Image();
 img.src = './montreal_files/canvas.png';
+img.crossOrigin = "anonymous"; 
 img.onload = function() {
   draw(this);
 };
