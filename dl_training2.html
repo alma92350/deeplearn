@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<script src="montreal_files/deeplearnlatest.js"></script>
+
+</head>
+
+<body>
+  <canvas id="canvas_ori"></canvas><br>
+  <canvas id="canvas_out"></canvas>
+  <br>
+  <div>
+	<input id="testbtn" value="Test" type="button">
+	<input id="displaybtn" value="Display" type="button">
+  </div>
+  <br>
+  <img id="image" src="">
+
+</body>
+
+<script>
+// Picture color treatement gray and inverting
+const canvas_ori = document.getElementById('canvas_ori');
+const canvas_out = document.getElementById('canvas_out');
+var ctx,imageData,data;
+
+const pic = 'captcha4.png'; //'montreal_files/canvas.png';//'me.png'; //
+
+/////////////////////////
+// Network Parameters
+num_hidden_1 = 300; //# 1st layer num features
+num_hidden_2 = 128; //# 2nd layer num features (the latent dim)
+num_input = 0;
+TRAIN_STEPS = 500;
+LEARNING_RATE = 0.01;
+MOMENTUM = 0.01;
+
+var img = new Image();
+img.src = pic;
+img.onload = function() {
+  draw(this,canvas_ori);
+  draw(this,canvas_out);
+  num_input = canvas_ori.width * canvas_ori.height;
+};
+
+function draw(image,canvas) {
+  canvas.width = image.width;
+  canvas.height = image.height;
+  
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0);
+  image.style.display = 'none';
+};
+
+
+function getInputPix1d(canvas){
+  var ctx = canvas.getContext('2d');
+  imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  return dl.fromPixels(imageData).slice([0,0,0],[canvas.height,canvas.width,1]).squeeze();
+}
+
+function displayLayer(layer,width,height){
+  layer = dl.cast(layer,'int32');
+  alpha = dl.fill([height,width],255,'int32');	// create the alpha channel: 255 opaque
+  stacks = dl.stack([layer,layer,layer,alpha],2);		// restack everything
+
+  
+  // wait for the data to be ready
+  stacks.data().then(x => {
+    var ctx = canvas_out.getContext('2d');
+	var imageData = ctx.getImageData(0,0,width, height);
+	for(var i = 0; i<x.length;i++)
+	  imageData.data[i] = x[i];
+	
+	ctx.putImageData(imageData, 0, 0);
+    
+  });
+  return stacks;
+}
+
+function showInput1d(){
+  var input1d = getInputPix1d(canvas_ori);
+  displayLayer(input1d,canvas_ori.width,canvas_ori.height);
+}
+/////////////////////////
+
+
+
+function test(){
+const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
+const enc_w1 = dl.variable(dl.randomNormal([num_input,num_hidden_1],0.0,1.0/Math.sqrt(num_input)),true);
+const enc_b1 = dl.variable(dl.ones([num_hidden_1]),true);
+
+const dec_w1 = dl.variable(dl.randomNormal([num_hidden_1,num_input],0.0,1.0/Math.sqrt(num_input)),true);
+const dec_b1 = dl.variable(dl.randomNormal([num_input],0.0,1.0),true);
+
+function encode(inp1d){
+  return inp1d.as2D(1,num_input).matMul(enc_w1).add(enc_b1);
+}
+
+function decode(encLayer){
+  return encLayer.as2D(1,num_hidden_1).matMul(dec_w1).add(dec_b1);
+}
+
+function loss(labels, ys) {
+  return dl.sub(labels, ys).square().mean();
+}
+
+function model(inp1d){
+  return decode(encode(inp1d)).as2D(canvas_ori.height,canvas_ori.width);
+}
+
+// Train the model.
+async function train(inp1d) {
+  const returnCost = true;
+
+  for (let i = 0; i < TRAIN_STEPS; i++) {
+    const cost = optimizer.minimize(() => {
+      return loss(inp1d, model(inp1d));
+    }, returnCost);
+    if(i%10==0) {
+		console.log(cost.dataSync());
+		//ys = model(inp1d).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
+		//displayLayer(ys,canvas_ori.width,canvas_ori.height);
+		ys = encode(inp1d).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
+		ys = ys.reshape([10,30]);
+		displayLayer(ys,30,10);
+	};
+	await dl.nextFrame();
+	
+  }
+  encode(inp1d).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0).print();
+  enc_w1.print();
+  enc_b1.print();
+  dec_w1.print();
+  dec_b1.print();
+}
+
+// Predict the digit number from a batch of input images.
+function predict(x) {
+  const pred = dl.tidy(() => {
+    const axis = 1;
+    return model(x).argMax(axis);
+  });
+  return Array.from(pred.dataSync());
+}
+
+/////////////////
+  input1d = getInputPix1d(canvas_ori);
+  //stacks = displayLayer(input1d,canvas_ori.width,canvas_ori.height);
+  input1dnorm = dl.cast(input1d,'float32').div(dl.scalar(255.0,'float32'));
+  
+  train(input1dnorm);
+  
+  
+  //enc_layer1 = encode(input1dnorm); // input1d.as2D(1,num_input).matMul(enc_w1).add(enc_b1); //
+  
+  //dec_layer1 = decode(enc_layer1); //enc_layer1.as2D(1,num_hidden_1).matMul(dec_w1).add(dec_b1); //
+
+  //dec_layer1_scaled = dec_layer1.mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
+  
+  //displayLayer(dec_layer1_scaled,canvas_ori.width,canvas_ori.height);
+
+  //ys = dec_layer1.as2D(canvas_ori.height,canvas_ori.width);
+  //err = loss(input1dnorm,ys);
+
+
+
+  //draw(img,canvas_out);
+}
+
+/////////////////////////
+
+var testbtn = document.getElementById("testbtn");
+testbtn.addEventListener('click', test);
+var displaybtn = document.getElementById("displaybtn");
+displaybtn.addEventListener('click', showInput1d);
+</script>

@@ -3,8 +3,30 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <script src="montreal_files/deeplearnlatest.js"></script>
 
+</head>
+
+<body>
+  hello<br>
+
+  <canvas id="canvas" width="300" height="227"></canvas>
+  <br>
+  <div>
+    <input id="graybtn" value="Gray" type="button">
+    <input id="testbtn" value="Test" type="button">
+  </div>
+  <br>
+  <img id="image" src="" width="300">
+
+</body>
 <script>
 // Picture color treatement gray and inverting
+var canvas = document.getElementById('canvas');
+var image = document.getElementById("image");
+
+var ctx;
+var imageData;
+var data;
+
 var img = new Image();
 img.src = 'montreal_files/canvas.png';
 img.onload = function() {
@@ -12,41 +34,21 @@ img.onload = function() {
 };
 
 function draw(img) {
-  var canvas = document.getElementById('canvas');
-  var ctx = canvas.getContext('2d');
+  ctx = canvas.getContext('2d');
+  imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  data = imageData.data;
   ctx.drawImage(img, 0, 0);
   img.style.display = 'none';
-  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  var data = imageData.data;
-  var image = document.getElementById("image");
-  
+
   image.src = canvas.toDataURL("image/png");
 };
 
-</script>
-
-</head>
-
-<body>
-    hello
-
-	<canvas id="canvas" width="300" height="227"></canvas>
-	
-	<div>
-	  <input id="graybtn" value="Gray" type="button">
-	  <input id="testbtn" value="Test" type="button">
-	</div>
-	<img id="image" src="" width="300">
-
-</body>
-
-<script> // Let's manipulate the image
+// Let's manipulate the image
 
 function gray(){
-  var canvas = document.getElementById('canvas');
-  var ctx = canvas.getContext('2d');
-  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  var data = imageData.data;
+  ctx = canvas.getContext('2d');
+  imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  data = imageData.data;
   len = data.length/4;
 
   //t1 = dl.tensor1d(new Int32Array(data));
@@ -58,10 +60,6 @@ function gray(){
   stacks = dl.stack([avr,avr,avr,alpha],2);
   
   stacks.data().then(x => {
-	//var ctx = canvas.getContext('2d');
-	//var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  	//var data = imageData.data;
-	//data = x;
 	for(i=0;i<x.length;i++)
 		data[i] = x[i];
         
@@ -70,6 +68,9 @@ function gray(){
   });
 }
 
+function test(){
+  
+}
 
   var graybtn = document.getElementById("graybtn");
   graybtn.addEventListener('click', gray);
