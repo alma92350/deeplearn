@@ -32,7 +32,7 @@ const pic = 'captcha4.png'; //'montreal_files/canvas.png';//'me.png'; //
 
 /////////////////////////
 // Network Parameters
-num_hidden_1 = 600; //# 1st layer num features
+num_hidden_1 = 100; //# 1st layer num features
 num_hidden_2 = 128; //# 2nd layer num features (the latent dim)
 num_input = 0;
 TRAIN_STEPS = 1000;
@@ -210,7 +210,7 @@ async function train(inpTN) {
 		
 		ys = model(inpTN[14]).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
 		displayLayer(ys,canvas_ori.width,canvas_ori.height);
-		//showTensor(enc_w1.mul(dl.scalar(25500.0,'float32')).clipByValue(0.0,255.0),1000,600);
+		showTensor(dec_w1.mul(dl.scalar(25500.0,'float32')).clipByValue(0.0,255.0),1000,600);
 		//console.log(enc_w1.dataSync());
 		  encoder = {
 			step: encoder.step+TRAIN_STEPS,
