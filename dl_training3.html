@@ -31,11 +31,12 @@ var ctx,imageData,data;
 const pic = 'captcha4.png'; //'montreal_files/canvas.png';//'me.png'; //
 
 /////////////////////////
+Max_files = 15;
 // Network Parameters
-num_hidden_1 = 100; //# 1st layer num features
+num_hidden_1 = 60; //# 1st layer num features
 num_hidden_2 = 128; //# 2nd layer num features (the latent dim)
 num_input = 0;
-TRAIN_STEPS = 500;
+TRAIN_STEPS = 1000;
 LEARNING_RATE = 0.01;
 MOMENTUM = 0.01;
 ////////////////////////////////
@@ -73,8 +74,7 @@ function showTensor(tensor,width,height){
   //});
 }
 ////////////////////////////////
-num_files = 0;
-Max_files = 15;
+var num_files = 0;
 
 var img = new Image();
 var inputTensors = [];
@@ -199,10 +199,11 @@ async function train(inpTN) {
 
   for (let i = 0; i < TRAIN_STEPS; i++) {
 	for(let j=0; j< inpTN.length; j++){
+		var shuffled = Math.floor(Math.random()*100)%inpTN.length;
 		const cost = optimizer.minimize(() => {
-		  return loss(inpTN[j], model(inpTN[j]));
+		  return loss(inpTN[shuffled], model(inpTN[shuffled]));
 		}, returnCost);
-		if(i%10==0 && j==0) console.log(cost.dataSync());
+		if(i%10==0 && shuffled==0) console.log(cost.dataSync());
 		await dl.nextFrame();
 	}
 
@@ -210,7 +211,7 @@ async function train(inpTN) {
 		
 		ys = model(inpTN[14]).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
 		displayLayer(ys,canvas_ori.width,canvas_ori.height);
-		showTensor(dec_w1.mul(dl.scalar(25500.0,'float32')).clipByValue(0.0,255.0),1000,600);
+		showTensor(dec_w1.mul(dl.scalar(25500.0,'float32')).clipByValue(0.0,255.0),1000,num_input*num_hidden_1/3/1000);
 		//console.log(enc_w1.dataSync());
 		  encoder = {
 			step: encoder.step+TRAIN_STEPS,
@@ -284,11 +285,11 @@ function predict(x) {
 /////////////////////////
 var predictIndex = 0;
 function predict(){
-	var enc_w1 = dl.variable(dl.tensor(encoder.w1,[num_input,num_hidden_1]),true);
-	var enc_b1 = dl.variable(dl.tensor(encoder.b1,[num_hidden_1]),true);
+	var enc_w1 = dl.tensor(encoder.w1,[num_input,num_hidden_1]);
+	var enc_b1 = dl.tensor(encoder.b1,[num_hidden_1]);
 
-	var dec_w1 = dl.variable(dl.tensor(decoder.w1,[num_hidden_1,num_input]),true);
-	var dec_b1 = dl.variable(dl.tensor(decoder.b1,[num_input]),true);
+	var dec_w1 = dl.tensor(decoder.w1,[num_hidden_1,num_input]);
+	var dec_b1 = dl.tensor(decoder.b1,[num_input]);
 	function encode(inp1d){
 	  return inp1d.as2D(1,num_input).matMul(enc_w1).add(enc_b1);
 	}
@@ -301,6 +302,7 @@ function predict(){
 	}
 	predictIndex = predictIndex % inputTensors.length;
     var res = model(dl.cast(inputTensors[predictIndex++],'float32').div(dl.scalar(255.0,'float32')));
+	res = res.mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
 	displayLayer(res,canvas_ori.width,canvas_ori.height);
 }
 
