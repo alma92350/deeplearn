@@ -6,8 +6,8 @@
 </head>
 
 <body>
-  <canvas id="canvas_ori"></canvas><br>
-  <canvas id="canvas_out"></canvas>
+  <canvas id="canvas_ori"></canvas> 
+  <canvas id="canvas_out"></canvas><br>
   <canvas id="canvas_out2"></canvas>
   <br>
   <div>
@@ -18,12 +18,14 @@
 	<input id="displaybtn" value="Display" type="button">
   </div>
   <br>
-  <img id="image" src="">
+  <img id="image_ori" src="">
 
 </body>
 
 <script>
-// Picture color treatement gray and inverting
+// Test on Encoder and Decoder
+// !!Disable CORs on Chrome:
+// !!> chrome.exe --disable-web-security --user-data-dir
 const canvas_ori = document.getElementById('canvas_ori');
 const canvas_out = document.getElementById('canvas_out');
 var ctx,imageData,data;
@@ -77,6 +79,7 @@ function showTensor(tensor,width,height){
 var num_files = 0;
 
 var img = new Image();
+img.crossOrigin = "Anonymous";
 var inputTensors = [];
 
 img.onload = function() {
@@ -85,7 +88,14 @@ img.onload = function() {
   draw(this,canvas_out);
 
     var ctx = canvas_out.getContext('2d');
-	var iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
+	var iData;
+	try {
+		iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
+	} catch (err) {
+		console.log(err);
+		//iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
+	}
+	
 	var th = 220;
 	for(var i = 0; i<iData.data.length;i+=4){
 	  if(iData.data[i]>th||iData.data[i+1]>th||iData.data[i+2]>th){
@@ -105,8 +115,10 @@ img.onload = function() {
   } else load();
 };
 
+var image_ori = document.getElementById('image_ori');
 function load(){
-	img.src = 'captchas/captcha' + num_files + '.png';
+	image_ori.src = 'captchas/captcha' + num_files + '.png';
+	img.src = image_ori.src;
 	num_files++;
 }
 
@@ -207,20 +219,20 @@ async function train(inpTN) {
 		await dl.nextFrame();
 	}
 
-	if(i%10==0) {
+	if(i%50==0) {
 		
 		ys = model(inpTN[14]).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0);
 		displayLayer(ys,canvas_ori.width,canvas_ori.height);
 		showTensor(dec_w1.mul(dl.scalar(25500.0,'float32')).clipByValue(0.0,255.0),1000,num_input*num_hidden_1/3/1000);
 		//console.log(enc_w1.dataSync());
 		  encoder = {
-			step: encoder.step+TRAIN_STEPS,
+			step: encoder.step+50,
 			w1  : enc_w1.dataSync(),
 			b1  : enc_b1.dataSync()
 		  };
 
 		  decoder = {
-			step: decoder.step+TRAIN_STEPS,
+			step: decoder.step+50,
 			w1  : dec_w1.dataSync(),
 			b1  : dec_b1.dataSync()
 		  };
@@ -230,17 +242,6 @@ async function train(inpTN) {
   //encode(inp1d[0]).mul(dl.scalar(255.0,'float32')).clipByValue(0.0,255.0).print();
   //enc_w1.print();
   //console.log(encoder.W1 = enc_w1.dataSync());
-  encoder = {
-	step: encoder.step+TRAIN_STEPS,
-	w1  : enc_w1.dataSync(),
-	b1  : enc_b1.dataSync()
-  };
-
-  decoder = {
-	step: decoder.step+TRAIN_STEPS,
-	w1  : dec_w1.dataSync(),
-	b1  : dec_b1.dataSync()
-  };
 
   console.log("Done!");
   
