@@ -37,8 +37,11 @@ const pic = 'captcha4.png'; //'montreal_files/canvas.png';//'me.png'; //
 
 /////////////////////////
 var   Max_files = 5;
-var	  LABELS_SIZE = 5;
-
+var	  LABELS_SIZE = 37; // 0..9 & a...z & 'none'
+var   _LABELS =['1','2','3','4','5','6','7','8','9','0',
+				'a','z','e','r','t','y','u','i','o','p',
+				'q','s','d','f','g','h','j','k','l','m',
+				'w','x','c','v','b','n','none'];
 const IMAGE_SIZE = 30;
 const char_width = 30;
 const char_height = 30;
@@ -56,13 +59,16 @@ function addEventToList(i){
 	onClicks.push(function(){
 	  var label = document.getElementById('input_label');
 	  var divlabel = document.getElementById('div_label_'+i);
-		var td1 = document.getElementById('td1_'+i);
-		var lab_count = document.getElementById('lab_count');
-	  iDataStack[i].label = label.value;
-		td1.setAttribute("style","background-color:powderblue;");
-	  divlabel.innerHTML = "label: " + label.value;
-		labels.add(label.value);
-    lab_count.innerHTML = labels.size;
+	  var td1 = document.getElementById('td1_'+i);
+	  var lab_count = document.getElementById('lab_count');
+	  if(_LABELS.includes(label.value)){
+	  	iDataStack[i].label = label.value;
+	    td1.setAttribute("style","background-color:powderblue;");
+	    divlabel.innerHTML = "label: " + label.value;
+	    labels.add(label.value);
+        lab_count.innerHTML = labels.size;
+	  }
+
 	});
 }
 
@@ -162,8 +168,8 @@ img.onload = function() {
   num_input = canvas_ori.width * canvas_ori.height;
   inputTensors.push(getInputPix1d(canvas_out).as1D());
   
-  if(num_files>=Max_files) {
-	num_files = 0;
+  if(num_files%Max_files == 0) {
+	//num_files = 0;
 	// end of loading now display
 	displayStack();
 	addEventToCanvas();
@@ -208,7 +214,9 @@ function trainModel(){
   for(var i=0;i<iDataStack.length;i++){
 	  ul.push(iDataStack[i].label);
   };
-  uniqueLabels = new Set(ul.sort());
+  
+  uniqueLabels = new Set(_LABELS.sort());
+  
   console.log(uniqueLabels.size);
 
   console.log("make dictionary");
