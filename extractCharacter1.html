@@ -247,6 +247,25 @@ function save(){
 	
 }
 
+function makeBatch(){
+  var xs=[],labels=[];
+
+	for(var i=0;i<iDataStack.length;i++){
+		var data = iDataStack[i];
+
+		if(data.label == 'none'){
+			xs.push(dl.cast(dl.fromPixels(data).slice([0,0,0],[char_height,char_width,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32")));
+			labels.push(labelDict[data.label]);
+		}
+	};
+  console.log("stack the training tensors");
+  return {
+  	xs : dl.stack(xs,0),
+  	labels : dl.stack(labels,0),
+  	size : xs.length,
+	};
+}
+
 ///////////////////////////////
 // Network Parameters
 num_hidden_1 = 60; //# 1st layer num features
