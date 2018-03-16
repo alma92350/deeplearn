@@ -294,16 +294,8 @@ function makeBatch(select=undefined,num=100){
 	
 	for(var i=0;i<iDataStack.length;i++){
 		var data = iDataStack[i];
-
 		if (select(data.label) && i<num){
-		  const x = dl.tidy(()=>{
-		  	return dl.cast(dl.fromPixels(data).slice([0,0,0],[char_height,char_width,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32")),
-		  					labelDict[data.label];
-		  });
-		
-			xs.push(x); 
-			//dl.cast(dl.fromPixels(data).slice([0,0,0],[char_height,char_width,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32")));
-			
+			xs.push(dl.cast(dl.fromPixels(data).slice([0,0,0],[char_height,char_width,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32")));
 			labels.push(labelDict[data.label]);
 		}
 	}
