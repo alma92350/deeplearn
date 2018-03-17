@@ -307,6 +307,17 @@ function makeBatch(select=undefined,num=100){
 	};
 }
 
+function showPredictions(){
+	// create the prediction batch
+	var p = makeBatch(()=>{return true;}, iDataStack.length);
+	var predictions = predict(p.xs);
+	for(var i=0; i<iDataStack.length;i++){
+		iDataStack[i].prediction = labelRevD[predictions[i]];
+		var divlab = document.getElementById("div_label_"+i);
+		divlab.innerHTML = '<font color="red">' + iDataStack[i].prediction + '</font>';
+	}
+}
+
 ///////////////////////////////
 // Network Parameters
 num_hidden_1 = 100; //# 1st layer num features
@@ -496,7 +507,7 @@ function displayResults(){
 
 /////////////////////////
 var predictbtn = document.getElementById("predictbtn");
-predictbtn.addEventListener('click', predict);
+predictbtn.addEventListener('click', showPredictions);
 var trainbtn = document.getElementById("trainbtn");
 trainbtn.addEventListener('click', trainModel);
 var loadbtn = document.getElementById("loadbtn");
