@@ -55,21 +55,21 @@ var	  onClicks=[];
 var labels = new Set();
 
 function addEventToList(i){
-	
-	onClicks.push(function(){
-	  var label = document.getElementById('input_label');
-	  var divlabel = document.getElementById('div_label_'+i);
-	  var td1 = document.getElementById('td1_'+i);
-	  var lab_count = document.getElementById('lab_count');
-	  if(_LABELS.includes(label.value)){
-	  	iDataStack[i].label = label.value;
-	    td1.setAttribute("style","background-color:powderblue;");
-	    divlabel.innerHTML = "label: " + label.value;
-	    labels.add(label.value);
-        lab_count.innerHTML = labels.size;
-	  }
-
-	});
+	if(i>=onClicks.length){
+		onClicks.push(function(){
+		  var label = document.getElementById('input_label');
+		  var divlabel = document.getElementById('div_label_'+i);
+		  var td1 = document.getElementById('td1_'+i);
+		  var lab_count = document.getElementById('lab_count');
+		  if(_LABELS.includes(label.value)){
+			iDataStack[i].label = label.value;
+			td1.setAttribute("style","background-color:powderblue;");
+			divlabel.innerHTML = "label: " + label.value;
+			labels.add(label.value);
+			lab_count.innerHTML = labels.size;
+		  }
+		});
+	};
 }
 
 function addEventToCanvas(){
@@ -309,12 +309,50 @@ function makeBatch(select=undefined,num=100){
 
 function showPredictions(){
 	// create the prediction batch
-	var p = makeBatch(()=>{return true;}, iDataStack.length);
-	var predictions = predict(p.xs);
+	const p = makeBatch(()=>{return true;}, iDataStack.length);
+	//const predictions = predict(p.xs);
+	const probaResults = model(p.xs).dataSync();
+	const num = p.size;
+	console.log("p.size",num);
+	
+	var   predictionProba = [];
+	// a helper function to get n highest probabilities descending
+	// the index is the forcasted character wrt labelRevD
+	function getIndicesOfHighest(array,n=1){
+		var res=[];
+		const sorted=array.slice().sort().reverse(); // sort on slice prevent change the original array
+		for(var i=0;i<n;i++)
+			res.push(array.indexOf(sorted[i]));
+		return res;
+	}
+	// extract the probabilities for each prediction
+	for(var i=0;i<num;i++){
+		predictionProba.push(probaResults.slice(i*37,(i+1)*37));
+	}
+	console.log("prediction proba: ", predictionProba);
+	
+	const NUM_PRED = 3;
+	console.log("prediction index: ", getIndicesOfHighest(predictionProba[0],NUM_PRED));
+	
 	for(var i=0; i<iDataStack.length;i++){
-		iDataStack[i].prediction = labelRevD[predictions[i]];
+		//iDataStack[i].prediction = labelRevD[predictions[i]];
+		const pps = getIndicesOfHighest(predictionProba[i],NUM_PRED);
+		
+		iDataStack[i].predictions = pps.map((idx) => {return {
+															prediction:labelRevD[idx],
+															probability:Math.floor(predictionProba[i][idx]*100)
+														};});	
 		var divlab = document.getElementById("div_label_"+i);
-		divlab.innerHTML = '<font color="red">' + iDataStack[i].prediction + '</font>';
+		
+		var predprob = iDataStack[i].predictions.map((p) => {
+			var pp='<tr>';
+			pp += '<td>' + p.prediction + ':</td><td> ' + p.probability + '% </td>';
+			pp += '</tr>';
+			return pp;
+			});
+		
+		divlab.innerHTML = '<table><tbody>' + predprob.join(' ') + '</tbody></table>'; //
+		//console.log(predprob);
 	}
 }
 
@@ -399,7 +437,7 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
   // Final layer
   return layer2.as2D(-1, fullyConnectedWeights.shape[0])
       .matMul(fullyConnectedWeights)
-      .add(fullyConnectedBias);
+      .add(fullyConnectedBias).sigmoid();
 }
 
 //////////////////////
@@ -504,7 +542,14 @@ function displayLayers(layers,width,height){
 function displayResults(){
 	DISPLAY = true;
 }
-
+/////////////////////////
+function test(){
+	console.log("test: TRAIN_STEPS = 1");
+	TRAIN_STEPS=1;
+	//loadbtn.click();
+	trainbtn.click();
+	predictbtn.click();
+}
 /////////////////////////
 var predictbtn = document.getElementById("predictbtn");
 predictbtn.addEventListener('click', showPredictions);
@@ -513,7 +558,7 @@ trainbtn.addEventListener('click', trainModel);
 var loadbtn = document.getElementById("loadbtn");
 loadbtn.addEventListener('click', load);
 var testbtn = document.getElementById("testbtn");
-//testbtn.addEventListener('click', test);
+testbtn.addEventListener('click', test);
 var displaybtn = document.getElementById("displaybtn");
 displaybtn.addEventListener('click', displayResults);
 </script>
