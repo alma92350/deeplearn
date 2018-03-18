@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<script src="montreal_files/deeplearnlatest.js"></script>
+
+</head>
+
+<body>
+  <canvas id="canvas_ori"></canvas><br>  
+  <img id="image_ori" src='captcha4.png'><br>
+  <canvas id="canvas_out"></canvas><br>
+  <canvas id="canvas_out2"></canvas><br>
+  <input id="input_label" type="text" placeHolder="label" size=2>
+  
+  <div>
+	<input id="loadbtn" value="Load" type="button">
+	<input id="generatebtn" value="Generate" type="button">
+	<input id="testbtn" value="Test" type="button">
+	<input id="predictbtn" value="Predict" type="button">
+	<input id="displaybtn" value="Display" type="button">
+  </div>
+  <br>
+
+
+	<label id="lab_count">0</label>
+  <div   id="div_results"></div>
+  <script id="storage"></script>
+</body>
+
+<script>
+CANVAS_SIZE = 30;
+FONT = "22px Arial";
+CHAR_X = 9;
+CHAR_Y = 22;
+LINE_WIDTH = 20;
+Angle = 0;
+
+function generate(){
+	const canvas = document.getElementById("canvas_ori");
+	const ctx = canvas.getContext("2d");
+	const inpLabel =  document.getElementById("input_label");
+	const label = inpLabel.value;
+	console.log(label);
+	
+	canvas.width = CANVAS_SIZE;
+	canvas.height = CANVAS_SIZE;
+  
+  ctx.fillStyle="black";
+  ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  
+  ctx.translate(CANVAS_SIZE/2,CANVAS_SIZE/2);
+  ctx.rotate((Angle*5-30)*Math.PI/180);
+  ctx.translate(-CANVAS_SIZE/2,-CANVAS_SIZE/2);
+
+	ctx.font = FONT;
+	
+	Angle = (Angle+1)%12;
+	ctx.fillStyle="white";
+  ctx.fillText(label,CHAR_X,CHAR_Y);
+}
+
+
+function test() {
+	var canvas = document.getElementById("canvas_ori");
+	var context = canvas.getContext('2d');
+	canvas.width = CANVAS_SIZE;
+	canvas.height = CANVAS_SIZE;
+	var canvasWidth = CANVAS_SIZE;
+  var canvasHeight = CANVAS_SIZE;
+  
+  // Clear the canvas
+  context.clearRect(0, 0, canvasWidth, canvasHeight);
+	
+  // Move registration point to the center of the canvas
+  context.translate(canvasWidth/2, canvasWidth/2);
+	
+  // Rotate 1 degree
+  context.rotate(10*Math.PI / 180);
+    
+  // Move registration point back to the top left corner of canvas
+  context.translate(-canvasWidth/2, -canvasWidth/2);
+	
+	
+  context.fillStyle = "red";
+  context.fillRect(canvasWidth/4, canvasWidth/4, canvasWidth/2, canvasHeight/4);
+  context.fillStyle = "blue";
+  context.fillRect(canvasWidth/4, canvasWidth/2, canvasWidth/2, canvasHeight/4);
+}
+
+
+/////////////////////////
+var predictbtn = document.getElementById("predictbtn");
+//predictbtn.addEventListener('click', predict);
+var generatebtn = document.getElementById("generatebtn");
+generatebtn.addEventListener('click', generate);
+var loadbtn = document.getElementById("loadbtn");
+//loadbtn.addEventListener('click', load);
+var testbtn = document.getElementById("testbtn");
+testbtn.addEventListener('click', test);
+var displaybtn = document.getElementById("displaybtn");
+//displaybtn.addEventListener('click', displayResults);
+</script>
