@@ -40,9 +40,9 @@ const pic = 'captcha4.png'; //'montreal_files/canvas.png';//'me.png'; //
 var   Max_files = 5;
 var	  LABELS_SIZE = 37; // 0..9 & a...z & 'none'
 var   _LABELS =['1','2','3','4','5','6','7','8','9','0',
-				'a','z','e','r','t','y','u','i','o','p',
-				'q','s','d','f','g','h','j','k','l','m',
-				'w','x','c','v','b','n','none'];
+				'A','B','C','D','E','F','G','H','I','J',
+				'K','L','M','N','O','P','Q','R','S','T',
+				'U','V','W','X','Y','Z','none'];
 const IMAGE_SIZE = 30;
 const char_width = 30;
 const char_height = 30;
@@ -75,12 +75,14 @@ function addEventToList(i){
 
 function addEventToCanvas(){
   for(var i=0;i<iDataStack.length;i++){
-	addEventToList(i);
-	var canvas = document.getElementById('div_canvas_'+i);
-	canvas.addEventListener('click',onClicks[i]);
+		addEventToList(i);
+		var canvas = document.getElementById('div_canvas_'+i);
+		canvas.addEventListener('click',onClicks[i]);
   }
 }
 
+////////////////////////////////////////////////////
+//// not used anymore in this version
 const firstLabelList = ['m','2','a','l','r',
 									      'f','m','a','k','c',
 									      '9','r','9','z','4'
@@ -96,6 +98,7 @@ function setLabelList(labels){
 			canvas.click();
   };
 }
+/////////////////////////////////////////////////
 
 function displayStack(){
   // add the canvas
@@ -137,11 +140,11 @@ function displayStack(){
 function capture(){
   
   for(var offset_index = 0;offset_index<offset.length;offset_index++){
-	// Extract characters from canva_out
-	var ctxout = canvas_out.getContext('2d');
-	var idata = ctxout.getImageData(offset[offset_index],0,char_width, char_height);
-	idata.label = "none";
-	iDataStack.push(idata);
+		// Extract characters from canva_out
+		var ctxout = canvas_out.getContext('2d');
+		var idata = ctxout.getImageData(offset[offset_index],0,char_width, char_height);
+		idata.label = "none";
+		iDataStack.push(idata);
   };
   //displayStack(); at the end of loading
 
@@ -191,7 +194,7 @@ img.onload = function() {
 	// end of loading now display
 	displayStack();
 	addEventToCanvas();
-	setLabelList(firstLabelList);
+	//setLabelList(firstLabelList);
 	
   } else load();
 };
@@ -222,8 +225,7 @@ labelRevD.getLabel = function(oneHot){
 }
 
 trainingBatch.nextTrainBatch = function(batchSize){
-	
-	var ts = [];
+
 	var xs = [];
 	var lb = [];
 	for(var i=0;i<batchSize;i++){
@@ -231,6 +233,7 @@ trainingBatch.nextTrainBatch = function(batchSize){
 		xs.push(trainingBatch.Array_xs[idx]);
 		lb.push(trainingBatch.Array_labels[idx]);
 	};
+	//console.log(xs,lb);
 	return {
 		xs : dl.stack(xs,0),
 		labels: dl.stack(lb,0)
@@ -241,11 +244,6 @@ trainingBatch.nextTrainBatch = function(batchSize){
 function trainModel(){
 
   console.log("unique labels");
-  var ul=[];
-  for(var i=0;i<iDataStack.length;i++){
-	  ul.push(iDataStack[i].label);
-  };
-  
   uniqueLabels = new Set(_LABELS.sort());
   
   console.log(uniqueLabels.size);
@@ -260,7 +258,7 @@ function trainModel(){
   
   console.log("make training batch");
   
-  console.log("consolidate labeled canvas");
+  console.log("Make tensors from labeled image data");
   var xs=[],labels=[];
 
 	for(var i=0;i<iDataStack.length;i++){
@@ -271,20 +269,15 @@ function trainModel(){
 			labels.push(labelDict[data.label]);
 		}
 	};
-  console.log("stack the training tensors");
-  trainingBatch.Array_xs = xs; //dl.stack(xs,0);
-  trainingBatch.Array_labels = labels; //dl.stack(labels,0);
+  console.log("Save the training tensors to training Batch");
+  trainingBatch.Array_xs = xs;
+  trainingBatch.Array_labels = labels;
   trainingBatch.size = xs.length;
 
   console.log("train the model");
 	train(trainingBatch,console.log);
 }
 
-function save(){
-	var store = document.getElementById("storage");
-	var str="";
-	
-}
 
 function makeBatch(select=undefined,num=100){
   var xs=[],labels=[];
@@ -457,6 +450,7 @@ async function train(data, log) {
 
     await dl.nextFrame();
   }
+  log("Training done!");
 }
 
 /////////////////////////////////////////////////////////
@@ -544,13 +538,30 @@ function displayResults(){
 	DISPLAY = true;
 }
 /////////////////////////
-function test(){
+function test1(){
 	console.log("test: TRAIN_STEPS = 1");
 	TRAIN_STEPS=1;
 	//loadbtn.click();
 	trainbtn.click();
 	predictbtn.click();
 }
+
+
+
+function generate(){
+	// get context for char batch generation	
+	for(i=0;i<_LABELS.length-1;i++){
+		const canvas = document.getElementById("canvas_ori");
+		const ctx = canvas.getContext("2d");
+		canvas.width = CANVAS_SIZE;
+		canvas.height = CANVAS_SIZE;
+		
+		iDataStack = iDataStack.concat(makeLabelBatch(_LABELS[i].toUpperCase(),ctx));
+	};
+	displayStack();
+	console.log("Training labeled data generated.");
+}
+
 /////////////////////////
 var predictbtn = document.getElementById("predictbtn");
 predictbtn.addEventListener('click', showPredictions);
@@ -559,7 +570,7 @@ trainbtn.addEventListener('click', trainModel);
 var loadbtn = document.getElementById("loadbtn");
 loadbtn.addEventListener('click', load);
 var testbtn = document.getElementById("testbtn");
-testbtn.addEventListener('click', test);
+testbtn.addEventListener('click', generateSample);
 /////////////////////////
 var generatebtn = document.getElementById("generatebtn");
 generatebtn.addEventListener('click', generate);
