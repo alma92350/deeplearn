@@ -4,8 +4,8 @@ CHAR_X = 9;
 CHAR_Y = 22;
 LINE_WIDTH = 20;
 
-ANGLE_AMP = 90;
-ANGLE_STEP = 10;
+ANGLE_AMP = 91;
+ANGLE_STEP = 45;
 Angle = 0;
 
 
