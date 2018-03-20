@@ -272,9 +272,7 @@ const Scheduler = {
 	RUN_SCHEDULER : false,
 	run : function(){
 					this.RUN_SCHEDULER = true;
-					STEP_MULTIPLIER = 100;
-					TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
-					console.log("scheduler: train the model. Samples: ",trainingBatch.size);
+					TRAIN_STEPS = 10000;
 					console.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
 					trainModel_OnAll();
 				},
