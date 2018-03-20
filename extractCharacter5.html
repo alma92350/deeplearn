@@ -268,11 +268,11 @@ function draw(image,canvas) {
 ///////////////////////////////////////
 /////////// SCHEDULER /////////////////
 ///////////////////////////////////////
-const Scheduler = {
+var Scheduler = {
 	RUN_SCHEDULER : false,
 	run : function(){
 					this.RUN_SCHEDULER = true;
-					TRAIN_STEPS = 10000;
+					TRAIN_STEPS = 3000;
 					console.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
 					trainModel_OnAll();
 				},
