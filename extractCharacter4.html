@@ -15,9 +15,11 @@
   <div>
   <input id="generatebtn" value="Generate" type="button">
 	<input id="loadbtn" value="Load" type="button">
-	<input id="trainbtn1" value="Train 1" type="button">
+	<input id="trainbtn1" value="Train (initial)" type="button">
 	<br>
-	<input id="predictbtn" value="Predict" type="button"><input id="trainbtn2" value="Train 2" type="button">
+	<input id="predictbtn" value="Predict" type="button">
+	<input id="trainbtn2" value="Train (wrong)" type="button">
+	<input id="trainbtn3" value="Train (probability)" type="button">
 	<br>
 	<input id="testbtn" value="Test" type="button">
 	
@@ -25,7 +27,7 @@
   </div>
   <br>
   <img id="image_ori" src=""><br>
-  <input id="input_label" type="text" placeHolder="label" size=2>
+  <input id="input_label" type="text" size=5 value="20">
 	<label id="lab_count">0</label>
   <div   id="div_results"></div>
   <script id="storage"></script>
@@ -246,6 +248,39 @@ trainingBatch.nextTrainBatch = function(batchSize){
 	};
 };
 
+///////////////////////////////////////
+
+function makeTrainingBatch_OnLowProbability(){
+	console.log("List low probabilities");
+	var labelValue = parseInt(document.getElementById('input_label').value);
+	
+	var xs=[],labels=[];
+	
+	for(var i=0;i<iDataStack.length;i++){
+		var data = iDataStack[i];
+		if((data.label !== 'none') && (data.predictions[0].probability<labelValue)){
+			xs.push(dl.cast(dl.fromPixels(data).slice([0,0,0],[char_height,char_width,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32")));
+			labels.push(labelDict[data.label]);
+		}
+	}
+	console.log("Save the training tensors to training Batch ",xs.length);
+	trainingBatch.Array_xs = xs;
+	trainingBatch.Array_labels = labels;
+	trainingBatch.size = xs.length;
+}
+function trainModel_OnLowProbability(){
+	console.log("make training batch if low probability");
+  makeTrainingBatch_OnLowProbability();
+
+  if(trainingBatch.size<1){
+  	alert("Provide a probability!");
+  	return;
+  }
+  console.log("train the model");
+	train(trainingBatch,console.log);
+}
+
+////////////////////////////////////////
 function makeTrainingBatchOfWrongPredictions(){
   console.log("List wrong predictions");
   var xs=[],labels=[];
@@ -259,7 +294,7 @@ function makeTrainingBatchOfWrongPredictions(){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	console.log("Save the training tensors to training Batch");
+	console.log("Save the training tensors to training Batch ",xs.length);
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
@@ -273,7 +308,7 @@ function trainModel_OnWrongPredictions(){
   console.log("train the model");
 	train(trainingBatch,console.log);
 }
-
+///////////////////////////
 function makeTrainingBatch(){
   console.log("Make tensors from labeled image data");
   var xs=[],labels=[];
@@ -286,7 +321,7 @@ function makeTrainingBatch(){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	console.log("Save the training tensors to training Batch");
+	console.log("Save the training tensors to training Batch ",xs.length);
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
@@ -485,6 +520,9 @@ var trainbtn1 = document.getElementById("trainbtn1");
 trainbtn1.addEventListener('click', trainModel_OnAll);
 var trainbtn2 = document.getElementById("trainbtn2");
 trainbtn2.addEventListener('click', trainModel_OnWrongPredictions);
+var trainbtn3 = document.getElementById("trainbtn3");
+trainbtn3.addEventListener('click', trainModel_OnLowProbability);
+
 var loadbtn = document.getElementById("loadbtn");
 loadbtn.addEventListener('click', load);
 var testbtn = document.getElementById("testbtn");
