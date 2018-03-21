@@ -271,16 +271,16 @@ function draw(image,canvas) {
 var Scheduler = {
 	RUN_SCHEDULER : false,
 	run : function(){
-					this.RUN_SCHEDULER = true;
+					Scheduler.RUN_SCHEDULER = true;
 					TRAIN_STEPS = 3000;
 					console.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
 					trainModel_OnAll();
 				},
 	pause : function(){
-					this.RUN_SCHEDULER = false;
+					Scheduler.RUN_SCHEDULER = false;
 				},
 	stop : function(){
-					this.RUN_SCHEDULER = false;
+					Scheduler.RUN_SCHEDULER = false;
 				},
 }
 
@@ -293,30 +293,44 @@ var logAndDone = {
 		/////////// Scheduler //////////
 		if(message == "Training done!" && Scheduler.RUN_SCHEDULER){
 		
-			switch (this._step){
+			switch (logAndDone._step){
 		
 				case 1:
 				case 3:
 				case 5:
 					showPredictions();
 					makeTrainingBatchOfWrongPredictions();
-					STEP_MULTIPLIER = 20;
-					console.log("scheduler: make training batch: Wrong prediction samples");
-					this._step+=2;
+					if(trainingBatch.size>0){
+						STEP_MULTIPLIER = 20;
+						console.log("scheduler: make training batch: Wrong prediction samples");
+						logAndDone._step+=2;
+					} else {
+						makeTrainingBatch();
+						STEP_MULTIPLIER = 40;
+						logAndDone._step = 2; // go to low probability
+					}
 					break;
 					
 				case 2:
+				case 4:
+				case 6:
 					showPredictions();
-					makeTrainingBatch_OnLowProbability();
-					console.log("scheduler: make training batch: Low probability samples");
-					STEP_MULTIPLIER = 20;
-					this._step++;
+					makeTrainingBatch_OnLowProbability(60);
+					if(trainingBatch.size>0){
+						STEP_MULTIPLIER = 20;
+						console.log("scheduler: make training batch: Low probability samples");
+						logAndDone._step +=2;
+					} else {
+						makeTrainingBatch();
+						STEP_MULTIPLIER = 40;
+						logAndDone._step = 1; // go to wrong predictions
+					}
 					break;
 				
 				default:
 					makeTrainingBatch();
 					STEP_MULTIPLIER = 40;
-					this._step = 1;
+					logAndDone._step = 1;
 					break;
 			};
 			TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
@@ -330,9 +344,8 @@ var logAndDone = {
 
 
 ///////////////////////////////////////
-function makeTrainingBatch_OnLowProbability(){
+function makeTrainingBatch_OnLowProbability(labelValue){
 	console.log("List low probabilities");
-	var labelValue = parseInt(document.getElementById('input_label').value);
 	
 	var xs=[],labels=[];
 	
@@ -348,9 +361,11 @@ function makeTrainingBatch_OnLowProbability(){
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
 }
+
 function trainModel_OnLowProbability(){
 	console.log("make training batch if low probability");
-  makeTrainingBatch_OnLowProbability();
+	var labelValue = parseInt(document.getElementById('input_label').value);
+  makeTrainingBatch_OnLowProbability(labelValue);
 
   if(trainingBatch.size<1){
   	alert("Provide a probability!");
