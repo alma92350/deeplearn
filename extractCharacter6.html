@@ -3,7 +3,7 @@
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <script src="montreal_files/deeplearnlatest.js"></script>
 <script src="charGenerator1.js"></script>
-<script src="capModel.js"></script>
+<script src="capModel1.js"></script>
 
 </head>
 
@@ -40,6 +40,9 @@
 // limit memory leakage related to tensor allocations
 // remove unused characters
 // Add global step
+// increase number of filters in capModel
+// Clean up
+// use capModel1.js
 
 //////////////////////////////
 // Test on Encoder and Decoder
@@ -52,7 +55,6 @@ var ctx,imageData,data;
 /////////////////////////
 var   Max_files = 5;
 
-const IMAGE_SIZE = 30;
 const char_width = 30;
 const char_height = 30;
 STEP_MULTIPLIER = 20; // TRAIN_STEPS = STEP_MULTIPLIER * TRAINING_BATCH_SIZE
@@ -203,7 +205,6 @@ function capture(){
 		idata.label = "none";
 		iDataStack.push(idata);
   };
-  //displayStack(); at the end of loading
 
 }
 
@@ -212,7 +213,6 @@ var num_files = 0;
 
 var img = new Image();
 img.crossOrigin = "Anonymous";
-var inputTensors = [];
 
 img.onload = function() {
   
@@ -242,10 +242,7 @@ img.onload = function() {
   // After canvas_out treatment
   capture();
   ////////////////	
-
-  num_input = canvas_ori.width * canvas_ori.height;
-  inputTensors.push(getInputPix1d(canvas_out).as1D());
-  
+ 
   if(num_files%Max_files == 0) {
 	//num_files = 0;
 	// end of loading now display
@@ -530,26 +527,7 @@ function showPredictions(){
 
 
 /////////////////////////////////////////////////////////////////////
-function showTensor(tensor,width,height){
-  var ctx = canvas_out2.getContext('2d');
-  canvas_out2.width = width;
-  canvas_out2.height = height;
-  
-  //tensor.data().then((x) => {
-	var x = tensor.dataSync();
-	var imageData = ctx.createImageData(width,height);
-	var data = imageData.data;
-	
-	for(var count=i=0;i<x.length;i+=3,count+=4){
-	  data[count]   = x[i]  ;  // red
-	  data[count+1] = x[i+1];  // green
-	  data[count+2] = x[i+2];  // blue
-	  data[count+3] = 255;     // alpha
-	};
-	ctx.putImageData(imageData,0,0);
-  //});
-}
-////////////////////////////////
+
 
 
 function getInputPix1d(canvas){
@@ -561,57 +539,7 @@ function getInputPix1d(canvas){
   return res;
 }
 
-function displayLayer(layerIn,width,height){
-	const layer = dl.tidy(() => {
-  	return dl.cast(layerIn,'int32');
-	});
-	
-	const alpha = dl.tidy(() => {
-  	return dl.fill([height,width],255,'int32');	// create the alpha channel: 255 opaque
-	});
-		
-	const stacks = dl.tidy(() => {
-  	return dl.stack([layer,layer,layer,alpha],2); // restack everything
-	});
-  
-  // wait for the data to be ready
-  stacks.data().then(x => {
-    var ctx = canvas_out.getContext('2d');
-		var imageData = ctx.getImageData(0,0,width, height);
-		for(var i = 0; i<x.length;i++)
-			imageData.data[i] = x[i];
-	
-    canvas_out.width = width;
-		canvas_out.height = height;
-		ctx.putImageData(imageData, 0, 0);
-    
-  });
-  return stacks;
-}
-
-function showInput1d(){
-  var input1d = getInputPix1d(canvas_ori);
-  displayLayer(input1d,canvas_ori.width,canvas_ori.height);
-}
-
-function displayLayers(layers,width,height){
-  //layers.as2D(width,-1).print();
-  displayLayer(layers.as2D(-1,width),width,height*Max_files);
-}
-
 /////////////////////////
-function displayResults(){
-	DISPLAY = true;
-}
-/////////////////////////
-function test1(){
-	console.log("test: TRAIN_STEPS = 1");
-	TRAIN_STEPS=1;
-	//loadbtn.click();
-	trainbtn.click();
-	predictbtn.click();
-}
-
 function generate(){
 	// get context for char batch generation	
 	for(i=0;i<_LABELS.length-1;i++){
