@@ -8,7 +8,8 @@ LEARNING_RATE = 0.01;
 MOMENTUM = 0.01;
 DISPLAY = false;
 BATCH_SIZE = 10;
-var	  LABELS_SIZE = 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
+var	LABELS_SIZE = 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
+var GLOBAL_STEP = 0;
 ////////////////////////////////
 
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
@@ -89,13 +90,14 @@ async function train(data, log) {
   const returnCost = true;
 
   for (let i = 0; i < TRAIN_STEPS; i++) {
+  	GLOBAL_STEP++;
     const cost = optimizer.minimize(() => {
       const batch = data.nextTrainBatch(BATCH_SIZE);
       return loss(batch.labels, model(batch.xs));
     }, returnCost);
 
     if(i%50==0)
-			log(`loss[${i}]: ${cost.dataSync()}`);
+			log(`GLOBAL_STEP: ${GLOBAL_STEP}, loss[${i}]: ${cost.dataSync()}`);
 
     await dl.nextFrame();
   }
