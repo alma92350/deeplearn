@@ -8,7 +8,7 @@ LEARNING_RATE = 0.01;
 MOMENTUM = 0.01;
 DISPLAY = false;
 BATCH_SIZE = 10;
-var	  LABELS_SIZE = 37; // 0..9 & a...z & 'none'
+var	  LABELS_SIZE = 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 ////////////////////////////////
 
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
