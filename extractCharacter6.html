@@ -43,6 +43,8 @@
 // increase number of filters in capModel
 // Clean up
 // use capModel1.js
+// if no input tensor then stop before training
+// adjust automatically the probability level for low proba selection
 
 //////////////////////////////
 // Test on Encoder and Decoder
@@ -291,6 +293,7 @@ var Scheduler = {
 
 var logAndDone = {
 	_step : 1,
+	_probaLevel : 60,
 	log : function(message){
 		console.log(message);
 		
@@ -319,12 +322,13 @@ var logAndDone = {
 				case 4:
 				case 6:
 					showPredictions();
-					makeTrainingBatch_OnLowProbability(60);
+					makeTrainingBatch_OnLowProbability(_probaLevel);
 					if(trainingBatch.size>0){
 						STEP_MULTIPLIER = 20;
 						console.log("scheduler: make training batch: Low probability samples");
 						logAndDone._step +=2;
 					} else {
+						logAndDone._probaLevel = Math.min(logAndDone._probaLevel+5,100);
 						makeTrainingBatch();
 						STEP_MULTIPLIER = 40;
 						logAndDone._step = 1; // go to wrong predictions
@@ -373,15 +377,16 @@ function makeTrainingBatch_OnLowProbability(labelValue){
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
+	
+	return xs.length;
 }
 
 function trainModel_OnLowProbability(){
 	console.log("make training batch if low probability");
 	var labelValue = parseInt(document.getElementById('input_label').value);
-  makeTrainingBatch_OnLowProbability(labelValue);
 
-  if(trainingBatch.size<1){
-  	alert("Provide a probability!");
+  if(makeTrainingBatch_OnLowProbability(labelValue)<1){
+  	alert("Provide a higher probability!");
   	return;
   }
   console.log("train the model");
@@ -406,12 +411,16 @@ function makeTrainingBatchOfWrongPredictions(){
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
+	
+	return xs.length;
 };
 
 function trainModel_OnWrongPredictions(){
 	console.log("make training batch if wrong prediction");
-  makeTrainingBatchOfWrongPredictions();
-
+  if(makeTrainingBatchOfWrongPredictions()<1){
+  	console.log("no wrong predictions");
+  	return;
+  }
 
   console.log("train the model");
 	train(trainingBatch,logAndDone.log);
