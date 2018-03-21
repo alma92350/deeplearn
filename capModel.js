@@ -13,14 +13,15 @@ var GLOBAL_STEP = 0;
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 
 // Variables that we want to optimize
-const conv1OutputDepth = 26;
+const FILTER_SIZE=6;
+const conv1OutputDepth = 32;
 var conv1Weights = dl.variable(
-    	dl.randomNormal([5, 5, 1, conv1OutputDepth], 0, 0.1) );
+    	dl.randomNormal([FILTER_SIZE, FILTER_SIZE, 1, conv1OutputDepth], 0, 0.1) );
 
 const conv2InputDepth = conv1OutputDepth;
-const conv2OutputDepth = 52;
+const conv2OutputDepth = 64;
 var conv2Weights = dl.variable(
-    	dl.randomNormal([5, 5, conv2InputDepth, conv2OutputDepth], 0, 0.1));
+    	dl.randomNormal([FILTER_SIZE, FILTER_SIZE, conv2InputDepth, conv2OutputDepth], 0, 0.1));
 
 var fullyConnectedWeights = dl.variable(
     	dl.randomNormal(
@@ -32,10 +33,10 @@ var fullyConnectedBias = dl.variable(dl.zeros([LABELS_SIZE]));
 // Reset variables
 function resetVariables(){
 	conv1Weights = dl.variable(
-    	dl.randomNormal([5, 5, 1, conv1OutputDepth], 0, 0.1) );
+    	dl.randomNormal([FILTER_SIZE, FILTER_SIZE, 1, conv1OutputDepth], 0, 0.1) );
 
 	conv2Weights = dl.variable(
-    	dl.randomNormal([5, 5, conv2InputDepth, conv2OutputDepth], 0, 0.1));
+    	dl.randomNormal([FILTER_SIZE, FILTER_SIZE, conv2InputDepth, conv2OutputDepth], 0, 0.1));
 
 	fullyConnectedWeights = dl.variable(
     	dl.randomNormal(
