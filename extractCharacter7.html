@@ -23,6 +23,8 @@
 	<input id="runbtn"   value="RUN"   type="button">
 	<input id="pausebtn" value="PAUSE" type="button">
 	<input id="stopbtn"  value="STOP"  type="button">
+	<br>
+	<input id="initbtn"  value="INIT"  type="button">
 
   </div>
   <br>
@@ -33,7 +35,6 @@
   <input id="input_label" type="text" size=5 value="20">
 	<label id="lab_count">0</label>
   <div   id="div_results"></div>
-  <script id="storage"></script>
 </body>
 
 <script>
@@ -48,6 +49,9 @@
 // adjust automatically the probability level for low proba selection
 // Add reporting to server via websocket
 // update stop and pause buttons
+// replace console.log with logAndDone
+// store wsUri in local storage
+// add remote controls
 
 //////////////////////////////
 // Test on Encoder and Decoder
@@ -81,16 +85,18 @@ var   _LABELS =['2','3','4','5','6','9',
 				'A','B','C','D','E','F','G','H','K','L',
 				'M','N','P','R','T','W','X','Y','Z','none'];
 var uniqueLabels = new Set(_LABELS.sort()); 
-console.log("unique labels",uniqueLabels.size);
+
 
 var labelDict = {};
 var labelRevD = [];
 
-(function(){
-	console.log("make dictionary");
+function initialize(){
+	//report.init();
+	logAndDone.log("unique labels: ${uniqueLabels.size}");
+	logAndDone.log("make dictionary");
 	var idx=0;
 	for(let label of uniqueLabels){
-		console.log("label: ",label);
+		//logAndDone.log("labels: ${_LABELS[idx]}");
 		labelRevD.push(label);
 		////////////////////////////////
 		const oneHotVector = dl.tidy(() => {
@@ -101,7 +107,14 @@ var labelRevD = [];
 		//labelDict[label] = dl.oneHot(dl.tensor1d([idx++]),uniqueLabels.size).squeeze();
 		labelDict[label] = oneHotVector;
 	};
-})();
+	
+	logAndDone.log("generating inputs");
+	generate();
+	
+	logAndDone.log("loading...once");
+	load()
+	
+}
 
 labelRevD.getLabel = function(oneHot){
   return labelRevD[dl.argMax(oneHot).dataSync()[0]];
@@ -119,7 +132,7 @@ trainingBatch.nextTrainBatch = function(batchSize){
 		xs.push(trainingBatch.Array_xs[idx]);
 		lb.push(trainingBatch.Array_labels[idx]);
 	};
-	//console.log(xs,lb);
+	//logAndDone.log(xs,lb);
 	////////////////////////////////
 	const xs_stack = dl.tidy(() => {
   	return dl.stack(xs,0);
@@ -229,7 +242,7 @@ img.onload = function() {
 	try {
 		iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
 	} catch (err) {
-		console.log(err);
+		logAndDone.log(err);
 		//iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
 	}
 	
@@ -282,7 +295,7 @@ var Scheduler = {
 	run : function(){
 					Scheduler.RUN_SCHEDULER = true;
 					TRAIN_STEPS = 3000;
-					console.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
+					logAndDone.log("scheduler: TRAIN_STEPS: ${TRAIN_STEPS}");
 					trainModel_OnAll();
 				},
 	pause : function(){
@@ -305,7 +318,12 @@ var logAndDone = {
 	_probaLevel : 60,
 	log : function(message){
 		console.log(message);
-		report.send(message);
+		try {
+			report.send(message);
+		} catch (err) {
+			//console.log(err);
+			//report.init();
+		}
 		/////////// Scheduler //////////
 		if(message == "Training done!" && Scheduler.RUN_SCHEDULER){
 		
@@ -318,7 +336,7 @@ var logAndDone = {
 					makeTrainingBatchOfWrongPredictions();
 					if(trainingBatch.size>0){
 						STEP_MULTIPLIER = 20;
-						console.log("scheduler: make training batch: Wrong prediction samples");
+						logAndDone.log("scheduler: make training batch: Wrong prediction samples");
 						logAndDone._step+=2;
 					} else {
 						makeTrainingBatch();
@@ -334,7 +352,7 @@ var logAndDone = {
 					makeTrainingBatch_OnLowProbability(logAndDone._probaLevel);
 					if(trainingBatch.size>0){
 						STEP_MULTIPLIER = 20;
-						console.log("scheduler: make training batch: Low probability samples");
+						logAndDone.log("scheduler: make training batch: Low probability samples");
 						logAndDone._step +=2;
 					} else {
 						logAndDone._probaLevel = Math.min(logAndDone._probaLevel+5,100);
@@ -351,8 +369,8 @@ var logAndDone = {
 					break;
 			};
 			TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
-			console.log("scheduler: train the model. Samples: ",trainingBatch.size);
-			console.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
+			logAndDone.log("scheduler: train the model. Samples:  ${trainingBatch.size}");
+			logAndDone.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
 			train(trainingBatch,logAndDone.log);
 		}
 	},
@@ -370,7 +388,7 @@ function makeTensorFromPixels(idata){
 
 ///////////////////////////////////////
 function makeTrainingBatch_OnLowProbability(labelValue){
-	console.log("List low probabilities");
+	logAndDone.log("List low probabilities");
 	
 	var xs=[],labels=[];
 	
@@ -381,7 +399,7 @@ function makeTrainingBatch_OnLowProbability(labelValue){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	console.log("Save the training tensors to training Batch ",xs.length);
+	logAndDone.log("Save the training tensors to training Batch  ${xs.length}");
 	
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
@@ -391,20 +409,20 @@ function makeTrainingBatch_OnLowProbability(labelValue){
 }
 
 function trainModel_OnLowProbability(){
-	console.log("make training batch if low probability");
+	logAndDone.log("make training batch if low probability");
 	var labelValue = parseInt(document.getElementById('input_label').value);
 
   if(makeTrainingBatch_OnLowProbability(labelValue)<1){
   	alert("Provide a higher probability!");
   	return;
   }
-  console.log("train the model");
+  logAndDone.log("train the model");
 	train(trainingBatch,logAndDone.log);
 }
 
 ////////////////////////////////////////
 function makeTrainingBatchOfWrongPredictions(){
-  console.log("List wrong predictions");
+  logAndDone.log("List wrong predictions");
   var xs=[],labels=[];
 
 
@@ -416,7 +434,7 @@ function makeTrainingBatchOfWrongPredictions(){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	console.log("Save the training tensors to training Batch ",xs.length);
+	logAndDone.log("Save the training tensors to training Batch  ${xs.length}");
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
@@ -425,18 +443,18 @@ function makeTrainingBatchOfWrongPredictions(){
 };
 
 function trainModel_OnWrongPredictions(){
-	console.log("make training batch if wrong prediction");
+	logAndDone.log("make training batch if wrong prediction");
   if(makeTrainingBatchOfWrongPredictions()<1){
-  	console.log("no wrong predictions");
+  	logAndDone.log("no wrong predictions");
   	return;
   }
 
-  console.log("train the model");
+  logAndDone.log("train the model");
 	train(trainingBatch,logAndDone.log);
 }
 ///////////////////////////
 function makeTrainingBatch(){
-  console.log("Make tensors from labeled image data");
+  logAndDone.log("Make tensors from labeled image data");
   var xs=[],labels=[];
 
 	for(var i=0;i<iDataStack.length;i++){
@@ -447,7 +465,7 @@ function makeTrainingBatch(){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	console.log("Save the training tensors to training Batch ",xs.length);
+	logAndDone.log("Save the training tensors to training Batch  ${xs.length}");
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
@@ -455,10 +473,10 @@ function makeTrainingBatch(){
 
 ////////////////////////////////////
 function trainModel_OnAll(){
-  console.log("make training batch");
+  logAndDone.log("make training batch");
   makeTrainingBatch();
 
-  console.log("train the model");
+  logAndDone.log("train the model");
 	train(trainingBatch,logAndDone.log);
 }
 
@@ -467,7 +485,7 @@ function makeBatch(select=undefined,num=100){
   var xs=[],labels=[];
 	if(select==undefined){
 		select = function(label){return (label=='none');};
-		console.log("select function");
+		logAndDone.log("select function");
 	};
 	
 	for(var i=0;i<iDataStack.length;i++){
@@ -477,7 +495,7 @@ function makeBatch(select=undefined,num=100){
 			labels.push(labelDict[data.label]);
 		}
 	}
-  console.log("stack the training tensors");
+  logAndDone.log("stack the training tensors");
 	////////////////////////////////
 	const xs_stack = dl.tidy(() => {
   	return dl.stack(xs,0);
@@ -499,7 +517,7 @@ function showPredictions(){
 	//const predictions = predict(p.xs);
 	const probaResults = model(p.xs).dataSync();
 	const num = p.size;
-	console.log("p.size",num);
+	logAndDone.log("Prediction batch size:  ${num}");
 	
 	var   predictionProba = [];
 	// a helper function to get n highest probabilities descending
@@ -515,10 +533,10 @@ function showPredictions(){
 	for(var i=0;i<num;i++){
 		predictionProba.push(probaResults.slice(i*(_LABELS.length),(i+1)*(_LABELS.length)));
 	}
-	console.log("prediction proba: ", predictionProba);
+	logAndDone.log("extracting prediction probabilities");
 	
 	const NUM_PRED = 3;
-	//console.log("prediction index: ", getIndicesOfHighest(predictionProba[0],NUM_PRED));
+	//logAndDone.log("prediction index: ", getIndicesOfHighest(predictionProba[0],NUM_PRED));
 	
 	for(var i=0; i<iDataStack.length;i++){
 		//iDataStack[i].prediction = labelRevD[predictions[i]];
@@ -538,7 +556,7 @@ function showPredictions(){
 			});
 		
 		divlab.innerHTML = '<table><tbody>' + predprob.join(' ') + '</tbody></table>'; //
-		//console.log(predprob);
+		//logAndDone.log(predprob);
 	}
 }
 
@@ -569,7 +587,7 @@ function generate(){
 		iDataStack = iDataStack.concat(makeLabelBatch(_LABELS[i].toUpperCase(),ctx));
 	};
 	displayStack();
-	console.log("Training labeled data generated.");
+	logAndDone.log("Training labeled data generated.");
 }
 /////////////////////////
 ///// reporting /////////
@@ -579,15 +597,34 @@ var report = {
 	init : function(){
 				// wsUri = "wss://example.com/ws/websoket";
 				var wsUri = document.getElementById('webSocket').value;
-				console.log(wsUri);
+				var wsUriLocalStore = localStorage['wsUri'];
+				if(wsUri=="" && wsUriLocalStore=="") {
+					console.log("report not initialized!!");
+					return;
+				}
+				
+				if(wsUri==""){
+					document.getElementById('webSocket').value = wsUriLocalStore;
+					wsUri = wsUriLocalStore;
+				} else {
+					localStorage['wsUri'] = wsUri;
+				}
 				report.ws = new WebSocket(wsUri);
+				
 				report.ws.onopen = function(ev) {
-					console.log('[Connected]');
-				};
+					logAndDone.log('[Connected]');
+					//////////////////////////
+					///// Initialize /////////
+					//////////////////////////
+					initialize();
+				}
 
 				report.ws.onclose = function(ev) {
-					console.log('[Disconnected]');
-				};
+					logAndDone.log('[Disconnected]');
+				}
+				///////////////////////////////////////
+				//////// remote control ///////////////
+				///////////////////////////////////////
 				report.ws.onmessage = function(ev) {
 					var payload = JSON.parse(ev.data);
 					console.log("["+payload.user+"]: "+payload.message);
@@ -603,13 +640,35 @@ var report = {
 								
 							case 'stop':
 								Scheduler.stop();
+								break;
+								
+							case 'train':
+								trainModel_OnAll();
+								break;
 							
+							case 'predict':
+								showPredictions();
+								break;
+								
+							case 'probability':
+							case 'proba':
+								trainModel_OnLowProbability();
+								break;
+								
+							case 'wrong':
+								trainModel_OnWrongPredictions();
+								break;
+							
+							case 'help':
+							case 'hi':
+								report.send('Scheduler: run, pause, stop');
+								report.send('Other: train, predict, proba, wrong');
 							default:
 								break;
 						}
 					}
 					
-				};
+				}
 			},
 	send : function(message){
 				var payload = {
@@ -620,7 +679,7 @@ var report = {
 				report.ws.send(JSON.stringify(payload));
 			},
 }
-
+report.init();
 /////////////////////////
 var predictbtn = document.getElementById("predictbtn");
 predictbtn.addEventListener('click', showPredictions);
@@ -646,7 +705,11 @@ var reportbtn = document.getElementById("reportbtn");
 reportbtn.addEventListener('click', report.init);
 var generatebtn = document.getElementById("generatebtn");
 generatebtn.addEventListener('click', generate);
+/////////////////////////
+var initbtn = document.getElementById("initbtn");
+initbtn.addEventListener('click', initialize);
 </script>
+
 
 
 
