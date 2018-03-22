@@ -322,7 +322,7 @@ var logAndDone = {
 				case 4:
 				case 6:
 					showPredictions();
-					makeTrainingBatch_OnLowProbability(_probaLevel);
+					makeTrainingBatch_OnLowProbability(logAndDone._probaLevel);
 					if(trainingBatch.size>0){
 						STEP_MULTIPLIER = 20;
 						console.log("scheduler: make training batch: Low probability samples");
