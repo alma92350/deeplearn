@@ -93,7 +93,7 @@ var labelRevD = [];
 
 function initialize(){
 	//report.init();
-	logAndDone.log("unique labels: ${uniqueLabels.size}");
+	logAndDone.log("unique labels: " + uniqueLabels.size);
 	logAndDone.log("make dictionary");
 	var idx=0;
 	for(let label of uniqueLabels){
@@ -662,6 +662,10 @@ var report = {
 								
 							case 'wrong':
 								trainModel_OnWrongPredictions();
+								break;
+								
+							case 'reload':
+								location.reload();
 								break;
 							
 							case 'hi':
