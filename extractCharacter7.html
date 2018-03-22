@@ -96,7 +96,6 @@ function initialize(){
 	logAndDone.log("make dictionary");
 	var idx=0;
 	for(let label of uniqueLabels){
-		//logAndDone.log("labels: ${_LABELS[idx]}");
 		labelRevD.push(label);
 		////////////////////////////////
 		const oneHotVector = dl.tidy(() => {
@@ -295,7 +294,7 @@ var Scheduler = {
 	run : function(){
 					Scheduler.RUN_SCHEDULER = true;
 					TRAIN_STEPS = 3000;
-					logAndDone.log("scheduler: TRAIN_STEPS: ${TRAIN_STEPS}");
+					logAndDone.log("scheduler: TRAIN_STEPS: "+TRAIN_STEPS);
 					trainModel_OnAll();
 				},
 	pause : function(){
@@ -369,8 +368,8 @@ var logAndDone = {
 					break;
 			};
 			TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
-			logAndDone.log("scheduler: train the model. Samples:  ${trainingBatch.size}");
-			logAndDone.log("scheduler: TRAIN_STEPS: ", TRAIN_STEPS);
+			logAndDone.log("scheduler: train the model. Samples:  " + trainingBatch.size);
+			logAndDone.log("scheduler: TRAIN_STEPS: " + TRAIN_STEPS);
 			train(trainingBatch,logAndDone.log);
 		}
 	},
@@ -399,7 +398,7 @@ function makeTrainingBatch_OnLowProbability(labelValue){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	logAndDone.log("Save the training tensors to training Batch  ${xs.length}");
+	logAndDone.log("Save the training tensors to training Batch " + xs.length);
 	
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
@@ -434,7 +433,7 @@ function makeTrainingBatchOfWrongPredictions(){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	logAndDone.log("Save the training tensors to training Batch  ${xs.length}");
+	logAndDone.log("Save the training tensors to training Batch " + xs.length);
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
@@ -465,7 +464,7 @@ function makeTrainingBatch(){
 			labels.push(labelDict[data.label]);
 		}
 	}
-	logAndDone.log("Save the training tensors to training Batch  ${xs.length}");
+	logAndDone.log("Save the training tensors to training Batch " + xs.length);
 	trainingBatch.Array_xs = xs;
 	trainingBatch.Array_labels = labels;
 	trainingBatch.size = xs.length;
@@ -517,7 +516,7 @@ function showPredictions(){
 	//const predictions = predict(p.xs);
 	const probaResults = model(p.xs).dataSync();
 	const num = p.size;
-	logAndDone.log("Prediction batch size:  ${num}");
+	logAndDone.log("Prediction batch size: " + num);
 	
 	var   predictionProba = [];
 	// a helper function to get n highest probabilities descending
