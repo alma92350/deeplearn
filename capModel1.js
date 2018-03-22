@@ -102,7 +102,7 @@ async function train(data, log) {
       return loss(batch.labels, model(batch.xs));
     }, returnCost);
 
-    if(i%50==0)
+    if(i%100==0)
 			log(`GLOBAL_STEP: ${GLOBAL_STEP}, loss[${i}]: ${cost.dataSync()}`);
 
     await dl.nextFrame();
