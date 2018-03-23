@@ -11,3 +11,5 @@ https://deeplearnjs.org/docs/api/index.html
 https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
 
 http://qnimate.com/?s=html5
+
+In this version, only single character recognition: lower memory, bigger training batch...
