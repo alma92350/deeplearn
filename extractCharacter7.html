@@ -53,6 +53,12 @@
 // store wsUri in local storage
 // add remote controls
 // add a name and keep alive
+// Code refactor:
+// 	separate the scheduler from the main  logAndDone.log
+//	separate the remote control part from the protocol layer
+// Better reporting of prediction result
+// storage of model variables in localStorage 
+// capability to address a unique instance
 
 //////////////////////////////
 // Test on Encoder and Decoder
@@ -292,6 +298,8 @@ function draw(image,canvas) {
 ///////////////////////////////////////
 var Scheduler = {
 	RUN_SCHEDULER : false,
+	_step : 1,
+	_probaLevel : 60,
 	run : function(){
 					Scheduler.RUN_SCHEDULER = true;
 					TRAIN_STEPS = 3000;
@@ -301,12 +309,74 @@ var Scheduler = {
 	pause : function(){
 					// wait until end of phase
 					Scheduler.RUN_SCHEDULER = false;
+					logAndDone.log("scheduler: pausing...: ");
+				},
+	resume : function(){
+					// wait until end of phase
+					Scheduler.RUN_SCHEDULER = true;
+					Scheduler.nextStep();
 				},
 	stop : function(){
 					// Stop asap!
 					Scheduler.RUN_SCHEDULER = false;
 					TRAIN_STEPS = 0;
 				},
+	nextStep: function(){
+					if(Scheduler.RUN_SCHEDULER){
+						switch (Scheduler._step){
+					
+							case 1:
+							case 3:
+							case 5:
+								showPredictions();
+								makeTrainingBatchOfWrongPredictions();
+								if(trainingBatch.size>0){
+									STEP_MULTIPLIER = 20;
+									logAndDone.log("scheduler: Wrong prediction samples: " + trainingBatch.size);
+									Scheduler._step+=2;
+								} else {
+									makeTrainingBatch();
+									STEP_MULTIPLIER = 40;
+									Scheduler._step = 2; // go to low probability
+									logAndDone.log("scheduler: Train All samples: " + trainingBatch.size);
+								}
+								break;
+								
+							case 2:
+							case 4:
+							case 6:
+								showPredictions();
+								makeTrainingBatch_OnLowProbability(Scheduler._probaLevel);
+								if(trainingBatch.size>0){
+									STEP_MULTIPLIER = 20;
+									logAndDone.log("scheduler: Low probability samples: " +
+																	trainingBatch.size+
+																	" Min Proba: " +
+																	Scheduler._probaLevel);
+									Scheduler._step +=2;
+								} else {
+									Scheduler._probaLevel = Math.min(Scheduler._probaLevel+5,100);
+									logAndDone.log("scheduler: Min Proba increased: " + Scheduler._probaLevel);
+									makeTrainingBatch();
+									STEP_MULTIPLIER = 40;
+									Scheduler._step = 1; // go to wrong predictions
+									logAndDone.log("scheduler: Train All samples: " + trainingBatch.size);
+								}
+								break;
+							
+							default:
+								makeTrainingBatch();
+								STEP_MULTIPLIER = 40;
+								Scheduler._step = 1;
+								break;
+						};
+						TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
+						train(trainingBatch,logAndDone.log);
+					} else {
+						logAndDone.log("scheduler: GLOBAL_STEP: "+GLOBAL_STEP);
+					}
+					
+				}
 }
 
 ////////////////////////////////////////
@@ -314,65 +384,20 @@ var Scheduler = {
 ////////////////////////////////////////
 
 var logAndDone = {
-	_step : 1,
-	_probaLevel : 60,
+	talk : true,
 	log : function(message){
-		console.log(message);
-		try {
-			report.send(message);
-		} catch (err) {
-			//console.log(err);
-			//report.init();
-		}
+		if(logAndDone.talk){
+			console.log(message);
+			try {
+				report.send(message);
+			} catch (err) {
+				//console.log(err);
+				//report.init();
+			}
+		};
 		/////////// Scheduler //////////
-		if(message == "Training done!" && Scheduler.RUN_SCHEDULER){
-		
-			switch (logAndDone._step){
-		
-				case 1:
-				case 3:
-				case 5:
-					showPredictions();
-					makeTrainingBatchOfWrongPredictions();
-					if(trainingBatch.size>0){
-						STEP_MULTIPLIER = 20;
-						logAndDone.log("scheduler: make training batch: Wrong prediction samples");
-						logAndDone._step+=2;
-					} else {
-						makeTrainingBatch();
-						STEP_MULTIPLIER = 40;
-						logAndDone._step = 2; // go to low probability
-					}
-					break;
-					
-				case 2:
-				case 4:
-				case 6:
-					showPredictions();
-					makeTrainingBatch_OnLowProbability(logAndDone._probaLevel);
-					if(trainingBatch.size>0){
-						STEP_MULTIPLIER = 20;
-						logAndDone.log("scheduler: make training batch: Low probability samples");
-						logAndDone._step +=2;
-					} else {
-						logAndDone._probaLevel = Math.min(logAndDone._probaLevel+5,100);
-						makeTrainingBatch();
-						STEP_MULTIPLIER = 40;
-						logAndDone._step = 1; // go to wrong predictions
-					}
-					break;
-				
-				default:
-					makeTrainingBatch();
-					STEP_MULTIPLIER = 40;
-					logAndDone._step = 1;
-					break;
-			};
-			TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
-			logAndDone.log("scheduler: train the model. Samples:  " + trainingBatch.size);
-			logAndDone.log("scheduler: TRAIN_STEPS: " + TRAIN_STEPS);
-			train(trainingBatch,logAndDone.log);
-		}
+		if(message == "Training done!")
+			Scheduler.nextStep();
 	},
 };
 
@@ -595,6 +620,65 @@ function generate(){
 var report = {
 	name : Math.floor(Math.random()*1000),
 	ws : null,
+	processCommand: function(cmd){
+				switch(cmd){
+					case 'run':
+						Scheduler.run();
+						break;
+					
+					case 'pause':
+						Scheduler.pause();
+						break;
+					
+					case 'resume':
+						Scheduler.resume();
+						break;
+						
+					case 'stop':
+						Scheduler.stop();
+						break;
+						
+					case 'train':
+						trainModel_OnAll();
+						break;
+					
+					case 'predict':
+						showPredictions();
+						break;
+						
+					case 'probability':
+					case 'proba':
+						trainModel_OnLowProbability();
+						break;
+						
+					case 'wrong':
+						trainModel_OnWrongPredictions();
+						break;
+						
+					case 'reload':
+						location.reload();
+						break;
+					
+					case 'hi':
+						report.send('hello!');
+						break;
+					
+					case 'talk':
+						logAndDone.talk = true;
+						break;
+					
+					case 'quiet':
+						logAndDone.talk = false;
+						break;
+					
+					case 'help':
+						report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
+						report.send('Other: reload, hi, talk, quiet');
+						
+					default:
+						break;
+				}
+			},
 	init : function(){
 				// wsUri = "wss://example.com/ws/websoket";
 				var wsUri = document.getElementById('webSocket').value;
@@ -633,54 +717,9 @@ var report = {
 					clearTimeout(report.timer);
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
 					
-					if(payload.user=='firefox'){
-						switch(payload.message){
-							case 'run':
-								Scheduler.run();
-								break;
-							
-							case 'pause':
-								Scheduler.pause();
-								break;
-								
-							case 'stop':
-								Scheduler.stop();
-								break;
-								
-							case 'train':
-								trainModel_OnAll();
-								break;
-							
-							case 'predict':
-								showPredictions();
-								break;
-								
-							case 'probability':
-							case 'proba':
-								trainModel_OnLowProbability();
-								break;
-								
-							case 'wrong':
-								trainModel_OnWrongPredictions();
-								break;
-								
-							case 'reload':
-								location.reload();
-								break;
-							
-							case 'hi':
-								report.send('hello!');
-								break;
-							
-							case 'help':
-								report.send('Scheduler: run, pause, stop');
-								report.send('Other: train, predict, proba, wrong');
-								
-							default:
-								break;
-						}
+					if(payload.user=='firefox' || payload.user==('firefox.'+report.name)){
+						report.processCommand(payload.message);
 					}
-					
 				}
 			},
 	timer : null,
