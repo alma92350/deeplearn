@@ -585,7 +585,26 @@ function showPredictions(){
 	}
 }
 
-
+function reportPredictions(){
+	var goodPredictions=0;
+	var lessThan50pc=0;
+	var lessThan90pc=0;
+	var totalSamples=0;
+	for(i=0;i<iDataStack.length;i++){
+		if(iDataStack[i].label!='none'){
+			totalSamples++;
+			if(iDataStack[i].label==iDataStack[i].predictions[0].prediction){
+				goodPredictions++;
+				lessThan50pc += (iDataStack[i].predictions[0].probability<50)?1:0;
+				lessThan90pc += (iDataStack[i].predictions[0].probability<90)?1:0;
+			}
+		}
+	};
+	logAndDone.log("Prediction report: Total samples    : "+ totalSamples);
+	logAndDone.log("Prediction report: Good predictions : "+ goodPredictions);
+	logAndDone.log("Prediction report: Probability < 50%: "+ lessThan50pc);
+	logAndDone.log("Prediction report: Probability < 90%: "+ lessThan90pc);
+}
 
 /////////////////////////////////////////////////////////////////////
 
@@ -644,6 +663,7 @@ var report = {
 					
 					case 'predict':
 						showPredictions();
+						reportPredictions();
 						break;
 						
 					case 'probability':
