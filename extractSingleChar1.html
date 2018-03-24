@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<script src="montreal_files/deeplearnlatest.js"></script>
+<script src="singleCharGenerator1.js"></script>
+<script src="capSingleModel1.js"></script>
+</head>
+
+<body>
+  <canvas id="canvas_ori"></canvas><br>
+  <canvas id="canvas_out"></canvas><br>
+  <canvas id="canvas_out2"></canvas><br>
+  
+  <div>
+  <input id="generatebtn" value="Generate" type="button">
+	<input id="loadbtn" value="Load" type="button">
+	<input id="trainbtn1" value="Train (initial)" type="button">
+	<br>
+	<input id="predictbtn" value="Predict" type="button">
+	<input id="trainbtn2" value="Train (wrong)" type="button">
+	<input id="trainbtn3" value="Train (probability)" type="button">
+	<br>
+	<input id="runbtn"   value="RUN"   type="button">
+	<input id="pausebtn" value="PAUSE" type="button">
+	<input id="stopbtn"  value="STOP"  type="button">
+	<br>
+	<input id="initbtn"  value="INIT"  type="button">
+	<input id="savebtn"  value="Save"  type="button">
+	<input id="restorebtn"  value="Restore"  type="button">
+  </div>
+  <br>
+  <img id="image_ori" src=""><br>
+  <input id="webSocket" type="text" size=50 placeHolder="Address to a websocket">
+  <input id="reportbtn"  value="Init Report"  type="button">
+  <br>
+  <input id="input_label" type="text" size=5 value="20">
+	<label id="lab_count">0</label>
+  <div   id="div_results"></div>
+</body>
+
+<script>
+//////////////////////////////
+// limit memory leakage related to tensor allocations
+// remove unused characters
+// Add global step
+// increase number of filters in capModel
+// Clean up
+// use capModel1.js
+// if no input tensor then stop before training
+// adjust automatically the probability level for low proba selection
+// Add reporting to server via websocket
+// update stop and pause buttons
+// replace console.log with logAndDone
+// store wsUri in local storage
+// add remote controls
+// add a name and keep alive
+// Code refactor:
+// 	separate the scheduler from the main  logAndDone.log
+//	separate the remote control part from the protocol layer
+// Better reporting of prediction result
+// storage of model variables in localStorage --- EXCEED QUOTA!!!
+// capability to address a unique instance
+/////////////////////////////////////////////
+//
+//
+// Recognize 1 character at high confidence
+//
+//
+////////////////////////////////////////////
+//
+////////////////////////////////////////////
+// Test on Encoder and Decoder
+// !!Disable CORs on Chrome:
+// !!> chrome.exe --disable-web-security --user-data-dir
+const canvas_ori = document.getElementById('canvas_ori');
+const canvas_out = document.getElementById('canvas_out');
+var ctx,imageData,data;
+
+/////////////////////////
+var   Max_files = 5;
+
+const char_width = 30;
+const char_height = 30;
+STEP_MULTIPLIER = 20; // TRAIN_STEPS = STEP_MULTIPLIER * TRAINING_BATCH_SIZE
+//////////////////////////
+
+var   offset = [0,21,37,53,71];
+var	  iDataStack = [];
+var	  onClicks=[];
+
+///////////////////////////////////////////////////////
+////////// unique labels and Dico /////////////////////
+
+//var   _LABELS =['1','2','3','4','5','6','7','8','9','0',
+//				'A','B','C','D','E','F','G','H','I','J',
+//				'K','L','M','N','O','P','Q','R','S','T',
+//				'U','V','W','X','Y','Z','none'];
+				
+var   _LABELS =['2','3','4','5','6','9',
+				'A','B','C','D','E','F','G','H','K','L',
+				'M','N','P','R','T','W','X','Y','Z','none'];
+
+var		TARGET = '2';
+var		NOT_TARGET = 'nok';
+var   TARGET_LABELS =[TARGET,NOT_TARGET];
+const NUM_PRED = Math.min(TARGET_LABELS.length,3); // number of predictions to be displayed
+var uniqueLabels = new Set(TARGET_LABELS.sort()); 
+
+
+var labelDict = {
+	dico: {},
+	add: function(lb,vect){
+		labelDict.dico[lb] = vect;
+	},
+	getVect: function(lb){
+		return (lb==TARGET)?labelDict.dico[TARGET]:labelDict.dico[NOT_TARGET];
+	},
+};
+var labelRevD = [];
+
+function initialize(){
+	//report.init();
+	LABELS_SIZE = 2; // for model
+	initializeModelVariables();
+	
+	logAndDone.log("unique labels: " + uniqueLabels.size);
+	logAndDone.log("make dictionary");
+	var idx=0;
+	for(let label of uniqueLabels){
+		labelRevD.push(label);
+		////////////////////////////////
+		const oneHotVector = dl.tidy(() => {
+    	return dl.oneHot(dl.tensor1d([idx++]),uniqueLabels.size)
+    			.squeeze();
+  	});
+  	////////////////////////////////
+		//labelDict[label] = dl.oneHot(dl.tensor1d([idx++]),uniqueLabels.size).squeeze();
+		labelDict.add(label, oneHotVector);
+	};
+	
+	logAndDone.log("generating inputs");
+	generate();
+	
+	logAndDone.log("loading...once");
+	load()
+	
+}
+
+labelRevD.getLabel = function(oneHot){
+  return labelRevD[dl.argMax(oneHot).dataSync()[0]];
+}
+
+////////////////////////////////////////
+var trainingBatch = {};
+trainingBatch.nextTrainBatch = function(batchSize){
+
+	var xs = [];
+	var lb = [];
+	for(var i=0;i<batchSize;i++){
+		var idx = Math.floor((Math.random()*trainingBatch.size));
+
+		xs.push(trainingBatch.Array_xs[idx]);
+		lb.push(trainingBatch.Array_labels[idx]);
+	};
+	//logAndDone.log(xs,lb);
+	////////////////////////////////
+	const xs_stack = dl.tidy(() => {
+  	return dl.stack(xs,0);
+	});
+	const lb_stack = dl.tidy(() => {
+		return dl.stack(lb,0);
+	});
+	////////////////////////////////
+	return {
+		xs : xs_stack,
+		labels: lb_stack
+	};
+};
+
+///////////////////////////////////////////
+var labels = new Set();
+function addEventToList(i){
+	if(i>=onClicks.length){
+		onClicks.push(function(){
+		  var label = document.getElementById('input_label');
+		  var divlabel = document.getElementById('div_label_'+i);
+		  var td1 = document.getElementById('td1_'+i);
+		  var lab_count = document.getElementById('lab_count');
+		  if(_LABELS.includes(label.value)){
+			iDataStack[i].label = label.value;
+			td1.setAttribute("style","background-color:powderblue;");
+			divlabel.innerHTML = "label: " + label.value;
+			labels.add(label.value);
+			lab_count.innerHTML = labels.size;
+		  }
+		});
+	};
+}
+
+function addEventToCanvas(){
+  for(var i=0;i<iDataStack.length;i++){
+		addEventToList(i);
+		var canvas = document.getElementById('div_canvas_'+i);
+		canvas.addEventListener('click',onClicks[i]);
+  }
+}
+
+/////////////////////////////////////////////////
+
+function displayStack(){
+  // add the canvas
+  const div_res = document.getElementById('div_results');
+  const Columns = 5;
+  const Rows = Math.floor(iDataStack.length / 5) + (iDataStack.length%5) ;
+
+  var table = '<table border="5px"><tbody>';
+  var count=0;
+  for(var row=0; row<Rows; row++){
+	  var line1="",line2="";
+	  for(var i=0; i<Columns && count<iDataStack.length; i++,count++){
+		// stacked display format
+		line1 += '<td id="td1_'+count+'" align="center" width=100><canvas id="div_canvas_'+count+
+						'" width='+char_width+
+						' height='+char_height+
+						' style="center"></canvas></td>';
+						
+		line2 += '<td id="td2_'+count+'" align="center"><label id="div_label_'+count+
+						'" style="center"> label: '+iDataStack[count].label+
+						'</label></td>';
+	  };
+	  table += '<tr>'+line1+'</tr><tr>'+line2+'</tr>';
+  };
+  table += '</tbody></table>';
+  div_res.innerHTML = table;
+
+  // display in canvas
+  
+  for(var i=0;i<iDataStack.length;i++){
+		var canvas = document.getElementById('div_canvas_'+i);
+    var ctx = canvas.getContext('2d');
+		ctx.putImageData(iDataStack[i],0,0);
+  };
+}
+
+
+
+function capture(){
+  
+  for(var offset_index = 0;offset_index<offset.length;offset_index++){
+		// Extract characters from canva_out
+		var ctxout = canvas_out.getContext('2d');
+		var idata = ctxout.getImageData(offset[offset_index],0,char_width, char_height);
+		idata.label = "none";
+		iDataStack.push(idata);
+  };
+
+}
+
+/////////////////////////////////////////////////
+var num_files = 0;
+
+var img = new Image();
+img.crossOrigin = "Anonymous";
+
+img.onload = function() {
+  
+  draw(this,canvas_ori);
+  draw(this,canvas_out);
+
+    var ctx = canvas_out.getContext('2d');
+	var iData;
+	try {
+		iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
+	} catch (err) {
+		logAndDone.log(err);
+		//iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
+	}
+	
+	var th = 220;
+	for(var i = 0; i<iData.data.length;i+=4){
+	  if(iData.data[i]>th||iData.data[i+1]>th||iData.data[i+2]>th){
+	    iData.data[i] = iData.data[i+1] = iData.data[i+2] = 255;
+	  } else {
+		iData.data[i] = iData.data[i+1] = iData.data[i+2] = 0;
+	  }
+    }
+    ctx.putImageData(iData, 0, 0);
+  
+  ////////////////
+  // After canvas_out treatment
+  capture();
+  ////////////////	
+ 
+  if(num_files%Max_files == 0) {
+	//num_files = 0;
+	// end of loading now display
+	displayStack();
+	addEventToCanvas();
+	//setLabelList(firstLabelList);
+	
+  } else load();
+};
+
+var image_ori = document.getElementById('image_ori');
+function load(){
+	image_ori.src = 'captchas/captcha' + num_files + '.png';
+	img.src = image_ori.src;
+	num_files++;
+}
+
+function draw(image,canvas) {
+  canvas.width = image.width;
+  canvas.height = image.height;
+  
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0);
+  image.style.display = 'none';
+};
+
+///////////////////////////////////////
+/////////// SCHEDULER /////////////////
+///////////////////////////////////////
+var Scheduler = {
+	RUN_SCHEDULER : false,
+	_step : 1,
+	_probaLevel : 60,
+	run : function(){
+					Scheduler.RUN_SCHEDULER = true;
+					TRAIN_STEPS = 3000;
+					logAndDone.log("scheduler: TRAIN_STEPS: "+TRAIN_STEPS);
+					trainModel_OnAll();
+				},
+	pause : function(){
+					// wait until end of phase
+					Scheduler.RUN_SCHEDULER = false;
+					logAndDone.log("scheduler: pausing...: ");
+				},
+	resume : function(){
+					// wait until end of phase
+					Scheduler.RUN_SCHEDULER = true;
+					Scheduler.nextStep();
+				},
+	stop : function(){
+					// Stop asap!
+					Scheduler.RUN_SCHEDULER = false;
+					TRAIN_STEPS = 0;
+				},
+	nextStep: function(){
+					if(Scheduler.RUN_SCHEDULER){
+						switch (Scheduler._step){
+					
+							case 1:
+							case 3:
+							case 5:
+								showPredictions();
+								makeTrainingBatchOfWrongPredictions();
+								if(trainingBatch.size>0){
+									STEP_MULTIPLIER = 20;
+									logAndDone.log("scheduler: Wrong prediction samples: " + trainingBatch.size);
+									Scheduler._step+=2;
+								} else {
+									makeTrainingBatch();
+									STEP_MULTIPLIER = 40;
+									Scheduler._step = 2; // go to low probability
+									logAndDone.log("scheduler: Train All samples: " + trainingBatch.size);
+								}
+								break;
+								
+							case 2:
+							case 4:
+							case 6:
+								showPredictions();
+								makeTrainingBatch_OnLowProbability(Scheduler._probaLevel);
+								if(trainingBatch.size>0){
+									STEP_MULTIPLIER = 20;
+									logAndDone.log("scheduler: Low probability samples: " +
+																	trainingBatch.size+
+																	" Min Proba: " +
+																	Scheduler._probaLevel);
+									Scheduler._step +=2;
+								} else {
+									Scheduler._probaLevel = Math.min(Scheduler._probaLevel+5,100);
+									logAndDone.log("scheduler: Min Proba increased: " + Scheduler._probaLevel);
+									makeTrainingBatch();
+									STEP_MULTIPLIER = 40;
+									Scheduler._step = 1; // go to wrong predictions
+									logAndDone.log("scheduler: Train All samples: " + trainingBatch.size);
+								}
+								break;
+							
+							default:
+								makeTrainingBatch();
+								STEP_MULTIPLIER = 40;
+								Scheduler._step = 1;
+								break;
+						};
+						TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
+						train(trainingBatch,logAndDone.log);
+					} else {
+						logAndDone.log("scheduler: GLOBAL_STEP: "+GLOBAL_STEP);
+					}
+					
+				}
+}
+
+////////////////////////////////////////
+//////////// Log and report ////////////
+////////////////////////////////////////
+
+var logAndDone = {
+	talk : true,
+	log : function(message){
+		if(logAndDone.talk){
+			console.log(message);
+			try {
+				report.send(message);
+			} catch (err) {
+				//console.log(err);
+				//report.init();
+			}
+		};
+		/////////// Scheduler //////////
+		if(message == "Training done!")
+			Scheduler.nextStep();
+	},
+};
+
+///////////////////////////////////////
+/// utility function
+function makeTensorFromPixels(idata){
+	const x_tensor = dl.tidy(() => {
+		return dl.cast(dl.fromPixels(idata).slice([0,0,0],[char_height,char_width,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32"));
+	});
+	
+	return x_tensor;
+}
+
+///////////////////////////////////////
+function makeTrainingBatch_OnLowProbability(labelValue){
+	logAndDone.log("List low probabilities");
+	
+	var xs=[],labels=[];
+	
+	for(var i=0;i<iDataStack.length;i++){
+		var data = iDataStack[i];
+		if((data.label !== 'none') && (data.predictions[0].probability<labelValue)){
+			xs.push(makeTensorFromPixels(data));
+			labels.push(labelDict.getVect(data.label));
+		}
+	}
+	logAndDone.log("Save the training tensors to training Batch " + xs.length);
+	
+	trainingBatch.Array_xs = xs;
+	trainingBatch.Array_labels = labels;
+	trainingBatch.size = xs.length;
+	
+	return xs.length;
+}
+
+function trainModel_OnLowProbability(){
+	logAndDone.log("make training batch if low probability");
+	var labelValue = parseInt(document.getElementById('input_label').value);
+
+  if(makeTrainingBatch_OnLowProbability(labelValue)<1){
+  	alert("Provide a higher probability!");
+  	return;
+  }
+  logAndDone.log("train the model");
+	train(trainingBatch,logAndDone.log);
+}
+
+////////////////////////////////////////
+function makeTrainingBatchOfWrongPredictions(){
+  logAndDone.log("List wrong predictions");
+  var xs=[],labels=[];
+
+
+	for(var i=0;i<iDataStack.length;i++){
+		var data = iDataStack[i];
+
+		if((data.label !== 'none') && (data.label != data.predictions[0].prediction)){
+			xs.push(makeTensorFromPixels(data));
+			labels.push(labelDict.getVect(data.label));
+		}
+	}
+	logAndDone.log("Save the training tensors to training Batch " + xs.length);
+	trainingBatch.Array_xs = xs;
+	trainingBatch.Array_labels = labels;
+	trainingBatch.size = xs.length;
+	
+	return xs.length;
+};
+
+function trainModel_OnWrongPredictions(){
+	logAndDone.log("make training batch if wrong prediction");
+  if(makeTrainingBatchOfWrongPredictions()<1){
+  	logAndDone.log("no wrong predictions");
+  	return;
+  }
+
+  logAndDone.log("train the model");
+	train(trainingBatch,logAndDone.log);
+}
+///////////////////////////
+function makeTrainingBatch(){
+  logAndDone.log("Make tensors from labeled image data");
+  var xs=[],labels=[];
+
+	for(var i=0;i<iDataStack.length;i++){
+		var data = iDataStack[i];
+
+		if(data.label !== 'none'){
+			xs.push(makeTensorFromPixels(data));
+			labels.push(labelDict.getVect(data.label));
+		}
+	}
+	logAndDone.log("Save the training tensors to training Batch " + xs.length);
+	trainingBatch.Array_xs = xs;
+	trainingBatch.Array_labels = labels;
+	trainingBatch.size = xs.length;
+}
+
+////////////////////////////////////
+function trainModel_OnAll(){
+  logAndDone.log("make training batch");
+  makeTrainingBatch();
+
+  logAndDone.log("train the model");
+	train(trainingBatch,logAndDone.log);
+}
+
+
+function makeBatch(select=undefined,from=0,num=100){
+  var xs=[],labels=[];
+	if(select==undefined){
+		select = function(label){return (label=='none');};
+		logAndDone.log("select function");
+	};
+	
+	for(var i=from;i<(from+num);i++){
+		var data = iDataStack[i];
+		if (select(data.label) && i<(from+num)){
+			xs.push(makeTensorFromPixels(data));
+			labels.push(labelDict.getVect(data.label));
+		}
+	}
+  //logAndDone.log("stack the training tensors");
+	////////////////////////////////
+	const xs_stack = dl.tidy(() => {
+  	return dl.stack(xs,0);
+	});
+	const lb_stack = dl.tidy(() => {
+		return dl.stack(labels,0);
+	});
+	////////////////////////////////
+	return {
+		xs : xs_stack,
+		labels: lb_stack,
+		size : xs.length
+	};
+}
+
+function makePredictionsByBatch(from,num){
+	// create the prediction batch
+	const p = makeBatch(()=>{return true;}, from, num);
+	
+	const probaResults = model(p.xs).dataSync();
+	//logAndDone.log("Prediction batch size: " + num);
+	
+	var   predictionProba = [];
+	// a helper function to get n highest probabilities descending
+	// the index is the forcasted character wrt labelRevD
+	function getIndicesOfHighest(array,n=1){
+		var res=[];
+		const sorted=array.slice().sort().reverse(); // sort on slice prevent change the original array
+		for(var i=0;i<n;i++)
+			res.push(array.indexOf(sorted[i]));
+		return res;
+	}
+	// extract the probabilities for each prediction
+	for(var i=0;i<num;i++){
+		predictionProba.push(probaResults.slice(i*(TARGET_LABELS.length),(i+1)*(TARGET_LABELS.length)));
+	}
+	//logAndDone.log("extracting prediction probabilities");
+	
+	//logAndDone.log("prediction index: ", getIndicesOfHighest(predictionProba[0],NUM_PRED));
+	
+	for(var i=0; i<num;i++){
+		//iDataStack[i].prediction = labelRevD[predictions[i]];
+		const pps = getIndicesOfHighest(predictionProba[i],NUM_PRED);
+		
+		iDataStack[from+i].predictions = pps.map((idx) => {return {
+															prediction:labelRevD[idx],
+															probability:Math.floor(predictionProba[i][idx]*100)
+														};});
+	}
+}
+
+async function showPredictions(){
+	var num = 150;
+	logAndDone.log("make predictions by batch");
+	for(from=0;from<iDataStack.length;from +=num){
+		makePredictionsByBatch(from,Math.min(num,iDataStack.length-from));
+		await dl.nextFrame();
+	}
+	
+	// show predictions from iDataStack
+	for(var i=0; i<iDataStack.length;i++){
+		var divlab = document.getElementById("div_label_"+i);
+		
+		var predprob = iDataStack[i].predictions.map((p) => {
+			var pp='<tr>';
+			pp += '<td>' + p.prediction + ':</td><td> ' + p.probability + '% </td>';
+			pp += '</tr>';
+			return pp;
+			});
+		
+		divlab.innerHTML = '<table><tbody>' + predprob.join(' ') + '</tbody></table>'; //
+		//logAndDone.log(predprob);
+	}
+	logAndDone.log("predictions shown!");
+}
+
+function reportPredictions(){
+	var goodPredictions=0;
+	var lessThan50pc=0;
+	var lessThan90pc=0;
+	var totalSamples=0;
+	for(i=0;i<iDataStack.length;i++){
+		if(iDataStack[i].label!='none'){
+			totalSamples++;
+			if(iDataStack[i].label==iDataStack[i].predictions[0].prediction){
+				goodPredictions++;
+				lessThan50pc += (iDataStack[i].predictions[0].probability<50)?1:0;
+				lessThan90pc += (iDataStack[i].predictions[0].probability<90)?1:0;
+			}
+		}
+	};
+	logAndDone.log("Prediction report: Total samples    : "+ totalSamples);
+	logAndDone.log("Prediction report: Good predictions : "+ goodPredictions);
+	logAndDone.log("Prediction report: Probability < 50%: "+ lessThan50pc);
+	logAndDone.log("Prediction report: Probability < 90%: "+ lessThan90pc);
+}
+
+/////////////////////////////////////////////////////////////////////
+
+
+
+function getInputPix1d(canvas){
+  var ctx = canvas.getContext('2d');
+  imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	const res = dl.tidy(() => {
+  	return dl.fromPixels(imageData).slice([0,0,0],[canvas.height,canvas.width,1]).squeeze();
+	});
+  return res;
+}
+
+/////////////////////////
+function generate(){
+	// get context for char batch generation	
+	for(i=0;i<_LABELS.length-1;i++){
+		const canvas = document.getElementById("canvas_ori");
+		const ctx = canvas.getContext("2d");
+		canvas.width = CANVAS_SIZE;
+		canvas.height = CANVAS_SIZE;
+		
+		iDataStack = iDataStack.concat(makeLabelBatch(_LABELS[i].toUpperCase(),ctx));
+	};
+	displayStack();
+	logAndDone.log("Training labeled data generated.");
+}
+/////////////////////////
+///// reporting /////////
+/////////////////////////
+var report = {
+	name : Math.floor(Math.random()*1000),
+	ws : null,
+	processCommand: function(cmd){
+				switch(cmd){
+					case 'run':
+						Scheduler.run();
+						break;
+					
+					case 'pause':
+						Scheduler.pause();
+						break;
+					
+					case 'resume':
+						Scheduler.resume();
+						break;
+						
+					case 'stop':
+						Scheduler.stop();
+						break;
+						
+					case 'train':
+						trainModel_OnAll();
+						break;
+					
+					case 'predict':
+						showPredictions();
+						reportPredictions();
+						break;
+						
+					case 'probability':
+					case 'proba':
+						trainModel_OnLowProbability();
+						break;
+						
+					case 'wrong':
+						trainModel_OnWrongPredictions();
+						break;
+						
+					case 'init var':
+						initializeModelVariables();
+						break;
+						
+					case 'save':
+						saveModelVariablesToLocalStorage();
+						break;
+																										
+					case 'restore':
+						restoreModelVariablesFromLocalStorage();
+						break;
+											
+					case 'reload':
+						location.reload();
+						break;
+					
+					case 'hi':
+						report.send('hello!');
+						break;
+					
+					case 'talk':
+						logAndDone.talk = true;
+						break;
+					
+					case 'quiet':
+						logAndDone.talk = false;
+						break;
+					
+					case 'help':
+						report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
+						report.send('Model: "init var", save, restore');
+						report.send('Other: reload, hi, talk, quiet');
+						
+					default:
+						break;
+				}
+			},
+	init : function(){
+				// wsUri = "wss://example.com/ws/websoket";
+				var wsUri = document.getElementById('webSocket').value;
+				var wsUriLocalStore = localStorage['wsUri'];
+				if(wsUri=="" && wsUriLocalStore=="") {
+					console.log("report not initialized!!");
+					return;
+				}
+				
+				if(wsUri==""){
+					document.getElementById('webSocket').value = wsUriLocalStore;
+					wsUri = wsUriLocalStore;
+				} else {
+					localStorage['wsUri'] = wsUri;
+				}
+				report.ws = new WebSocket(wsUri);
+				
+				report.ws.onopen = function(ev) {
+					logAndDone.log('[Connected]');
+					//////////////////////////
+					///// Initialize /////////
+					//////////////////////////
+					initialize();
+				}
+
+				report.ws.onclose = function(ev) {
+					logAndDone.log('[Disconnected]');
+				}
+				///////////////////////////////////////
+				//////// remote control ///////////////
+				///////////////////////////////////////
+				report.ws.onmessage = function(ev) {
+					var payload = JSON.parse(ev.data);
+					console.log("["+payload.user+"]: "+payload.message);
+					/////// keep alive //////
+					clearTimeout(report.timer);
+					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+					
+					if(payload.user=='firefox' || payload.user==('firefox.'+report.name)){
+						report.processCommand(payload.message);
+					}
+				}
+			},
+	timer : null,
+	send : function(message){
+				var payload = {
+					message: message,
+					user: report.name,
+				};
+				/////// keep alive //////
+				clearTimeout(report.timer);
+				report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+				report.ws.send(JSON.stringify(payload));
+			},
+}
+report.init();
+/////////////////////////
+var predictbtn = document.getElementById("predictbtn");
+predictbtn.addEventListener('click', showPredictions);
+var trainbtn1 = document.getElementById("trainbtn1");
+trainbtn1.addEventListener('click', trainModel_OnAll);
+var trainbtn2 = document.getElementById("trainbtn2");
+trainbtn2.addEventListener('click', trainModel_OnWrongPredictions);
+var trainbtn3 = document.getElementById("trainbtn3");
+trainbtn3.addEventListener('click', trainModel_OnLowProbability);
+
+var loadbtn = document.getElementById("loadbtn");
+loadbtn.addEventListener('click', load);
+
+//////////Scheduler Buttons ///////////
+var runbtn = document.getElementById("runbtn");
+runbtn.addEventListener('click', Scheduler.run);
+var pausebtn = document.getElementById("pausebtn");
+pausebtn.addEventListener('click', Scheduler.pause);
+var stopbtn = document.getElementById("stopbtn");
+stopbtn.addEventListener('click', Scheduler.stop);
+/////////////////////////
+var reportbtn = document.getElementById("reportbtn");
+reportbtn.addEventListener('click', report.init);
+var generatebtn = document.getElementById("generatebtn");
+generatebtn.addEventListener('click', generate);
+/////////////////////////
+var initbtn = document.getElementById("initbtn");
+initbtn.addEventListener('click', initialize);
+var savebtn = document.getElementById("savebtn");
+savebtn.addEventListener('click', saveModelVariablesToLocalStorage);
+var restorebtn = document.getElementById("restorebtn");
+restorebtn.addEventListener('click', restoreModelVariablesFromLocalStorage);
+</script>
+
+
+
+
