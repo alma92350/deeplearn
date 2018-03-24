@@ -3,6 +3,7 @@
 // increased conv weights
 // add a fully connected layer at input
 // store model variables to local storage
+// removed entry fullly connected layer to lower memory
 ///////////////////////////////
 // Network Parameters
 ///////////////////////////////
@@ -22,11 +23,11 @@ const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 
 // Variables that we want to optimize
 
-const hiddenInputLayerSize = 32;
-var fullyConnectedWeights_Input;
-var fullyConnectedBias_input;
+//const hiddenInputLayerSize = 32;
+//var fullyConnectedWeights_Input;
+//var fullyConnectedBias_input;
 
-const FILTER_SIZE=6;
+const FILTER_SIZE=5;
 const conv1OutputDepth = 16;
 var conv1Weights;
 
@@ -43,11 +44,11 @@ var fullyConnectedBias;
 // max pool --> 8 x 8
 // max pool -->> 4 x 4
 function initializeModelVariables(){
-	fullyConnectedWeights_Input = dl.variable(
-		  	dl.randomNormal(
-				    [IMAGE_SIZE*IMAGE_SIZE, hiddenInputLayerSize*hiddenInputLayerSize], 0,
-				    1 / Math.sqrt(IMAGE_SIZE*IMAGE_SIZE)));
-	fullyConnectedBias_input = dl.variable(dl.zeros([hiddenInputLayerSize*hiddenInputLayerSize]));
+//	fullyConnectedWeights_Input = dl.variable(
+//		  	dl.randomNormal(
+//				    [IMAGE_SIZE*IMAGE_SIZE, hiddenInputLayerSize*hiddenInputLayerSize], 0,
+//				    1 / Math.sqrt(IMAGE_SIZE*IMAGE_SIZE)));
+//	fullyConnectedBias_input = dl.variable(dl.zeros([hiddenInputLayerSize*hiddenInputLayerSize]));
 
 	conv1Weights = dl.variable(
 		  	dl.randomNormal([FILTER_SIZE, FILTER_SIZE, 1, conv1OutputDepth], 0, 0.1) );
@@ -57,8 +58,8 @@ function initializeModelVariables(){
 
 	fullyConnectedWeights = dl.variable(
 		  	dl.randomNormal(
-				    [8 * 8 * conv2OutputDepth, LABELS_SIZE], 0,
-				    1 / Math.sqrt(8 * 8 * conv2OutputDepth)));
+				    [5 * 5 * conv2OutputDepth, LABELS_SIZE], 0,
+				    1 / Math.sqrt(5 * 5 * conv2OutputDepth)));
 	fullyConnectedBias = dl.variable(dl.zeros([LABELS_SIZE]));
 }
 
@@ -66,7 +67,7 @@ function initializeModelVariables(){
 
 const modelName = 'singleCharModel1';
 function saveModelVariablesToLocalStorage(){
-	var modelVariables = [fullyConnectedWeights_Input.dataSync(),
+	var modelVariables = [//fullyConnectedWeights_Input.dataSync(),
 												fullyConnectedBias_input.dataSync(),
 												conv1Weights.dataSync(),
 												conv2Weights.dataSync(),
@@ -87,12 +88,11 @@ function toFloatArray(array){
 function restoreModelVariablesFromLocalStorage(){
 	var modelVariables = localStorage[modelName].split(',');
 	var idx=0;
-	var len = IMAGE_SIZE * IMAGE_SIZE * hiddenInputLayerSize * hiddenInputLayerSize;
-	console.log(len);
+	var len = 0; //IMAGE_SIZE * IMAGE_SIZE * hiddenInputLayerSize * hiddenInputLayerSize;
 		
-	fullyConnectedWeights_Input = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
-																[IMAGE_SIZE*IMAGE_SIZE, hiddenInputLayerSize*hiddenInputLayerSize],
-																'float32'));
+	//fullyConnectedWeights_Input = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
+	//															[IMAGE_SIZE*IMAGE_SIZE, hiddenInputLayerSize*hiddenInputLayerSize],
+	//															'float32'));
 //	return fullyConnectedWeights_Input;
 //}
 //function foo(){
@@ -119,9 +119,9 @@ function restoreModelVariablesFromLocalStorage(){
 									'float32'));
 									
 	idx = len;
-	len += 8 * 8 * conv2OutputDepth * LABELS_SIZE;
+	len += 5 * 5 * conv2OutputDepth * LABELS_SIZE;
 	fullyConnectedWeights = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
-													[8 * 8 * conv2OutputDepth, LABELS_SIZE],
+													[5 * 5 * conv2OutputDepth, LABELS_SIZE],
 													'float32'));
 
 	idx = len;
@@ -150,15 +150,15 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
 	const pad2 = 0;
 	
   // Input Fully connected 1
-  const fullyConnInputLayer = dl.tidy(() => {
-    return xs.as2D(-1, fullyConnectedWeights_Input.shape[0])
-      .matMul(fullyConnectedWeights_Input)
-      .add(fullyConnectedBias_input).sigmoid();
-  });
+  //const fullyConnInputLayer = dl.tidy(() => {
+  //  return xs.as2D(-1, fullyConnectedWeights_Input.shape[0])
+  //    .matMul(fullyConnectedWeights_Input)
+  //    .add(fullyConnectedBias_input).sigmoid();
+  //});
   
   // Conv 1
   const layer1 = dl.tidy(() => {
-    return fullyConnInputLayer.as4D(-1, hiddenInputLayerSize, hiddenInputLayerSize, 1)
+    return xs.as4D(-1, IMAGE_SIZE, IMAGE_SIZE, 1)
     		.conv2d(conv1Weights, 1, 'same')
         .relu()
         .maxPool([2, 2], strides1, pad1);
@@ -168,7 +168,7 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
   const layer2 = dl.tidy(() => {
     return layer1.conv2d(conv2Weights, 1, 'same')
         .relu()
-        .maxPool([2, 2], strides2, pad2);
+        .maxPool([3, 3], strides2, pad2);
   });
 
   // Final layer

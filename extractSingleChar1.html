@@ -72,6 +72,10 @@
 // but issue with scheduler: not waiting for predictions finish
 // => async would require more codes to handle wating before next step
 // report predictions at each show predictions
+// TRAINING STEP multiplier too large for this setting
+// set directly the training steps
+// reset Training steps after Stop
+// new command: clear model variable storage in local storage
 
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
@@ -346,9 +350,9 @@ var Scheduler = {
 					Scheduler.nextStep();
 				},
 	stop : function(){
-					// Stop asap!
+					// Stop Now!
 					Scheduler.RUN_SCHEDULER = false;
-					TRAIN_STEPS = 0;
+					TRAIN_STEPS = 100;
 				},
 	nextStep: function(){
 					if(Scheduler.RUN_SCHEDULER){
@@ -360,12 +364,10 @@ var Scheduler = {
 								showPredictions();
 								makeTrainingBatchOfWrongPredictions();
 								if(trainingBatch.size>0){
-									STEP_MULTIPLIER = 20;
 									logAndDone.log("scheduler: Wrong prediction samples: " + trainingBatch.size);
 									Scheduler._step+=2;
 								} else {
 									makeTrainingBatch();
-									STEP_MULTIPLIER = 40;
 									Scheduler._step = 2; // go to low probability
 									logAndDone.log("scheduler: Train All samples: " + trainingBatch.size);
 								}
@@ -377,7 +379,6 @@ var Scheduler = {
 								showPredictions();
 								makeTrainingBatch_OnLowProbability(Scheduler._probaLevel);
 								if(trainingBatch.size>0){
-									STEP_MULTIPLIER = 20;
 									logAndDone.log("scheduler: Low probability samples: " +
 																	trainingBatch.size+
 																	" Min Proba: " +
@@ -387,7 +388,6 @@ var Scheduler = {
 									Scheduler._probaLevel = Math.min(Scheduler._probaLevel+5,100);
 									logAndDone.log("scheduler: Min Proba increased: " + Scheduler._probaLevel);
 									makeTrainingBatch();
-									STEP_MULTIPLIER = 40;
 									Scheduler._step = 1; // go to wrong predictions
 									logAndDone.log("scheduler: Train All samples: " + trainingBatch.size);
 								}
@@ -395,11 +395,11 @@ var Scheduler = {
 							
 							default:
 								makeTrainingBatch();
-								STEP_MULTIPLIER = 40;
 								Scheduler._step = 1;
 								break;
 						};
-						TRAIN_STEPS = STEP_MULTIPLIER * trainingBatch.size;
+						TRAIN_STEPS = 3000;
+						logAndDone.log("scheduler: TRAIN_STEPS: "+TRAIN_STEPS);
 						train(trainingBatch,logAndDone.log);
 					} else {
 						logAndDone.log("scheduler: GLOBAL_STEP: "+GLOBAL_STEP);
@@ -701,6 +701,7 @@ var report = {
 						break;
 						
 					case 'train':
+						TRAIN_STEPS = 3000;
 						trainModel_OnAll();
 						break;
 					
@@ -710,10 +711,12 @@ var report = {
 						
 					case 'probability':
 					case 'proba':
+						TRAIN_STEPS = 3000;
 						trainModel_OnLowProbability();
 						break;
 						
 					case 'wrong':
+						TRAIN_STEPS = 3000;
 						trainModel_OnWrongPredictions();
 						break;
 						
@@ -723,10 +726,17 @@ var report = {
 						
 					case 'save':
 						saveModelVariablesToLocalStorage();
+						report.send('Model variables saved');
 						break;
 																										
 					case 'restore':
 						restoreModelVariablesFromLocalStorage();
+						report.send('Model variables restored');
+						break;
+
+					case 'clear':
+						localStorage[modelName]='';
+						report.send('Model storage cleared!');
 						break;
 											
 					case 'reload':
@@ -747,7 +757,7 @@ var report = {
 					
 					case 'help':
 						report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
-						report.send('Model: "init var", save, restore');
+						report.send('Model: "init var", save, restore, clear');
 						report.send('Other: reload, hi, talk, quiet');
 						
 					default:
