@@ -22,7 +22,7 @@ const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 
 // Variables that we want to optimize
 
-const hiddenInputLayerSize = 16;
+const hiddenInputLayerSize = 32;
 var fullyConnectedWeights_Input;
 var fullyConnectedBias_input;
 
@@ -31,7 +31,7 @@ const conv1OutputDepth = 16;
 var conv1Weights;
 
 const conv2InputDepth = conv1OutputDepth;
-const conv2OutputDepth = 16;
+const conv2OutputDepth = 32;
 var conv2Weights;
 
 var fullyConnectedWeights;
@@ -57,8 +57,8 @@ function initializeModelVariables(){
 
 	fullyConnectedWeights = dl.variable(
 		  	dl.randomNormal(
-				    [4 * 4 * conv2OutputDepth, LABELS_SIZE], 0,
-				    1 / Math.sqrt(4 * 4 * conv2OutputDepth)));
+				    [8 * 8 * conv2OutputDepth, LABELS_SIZE], 0,
+				    1 / Math.sqrt(8 * 8 * conv2OutputDepth)));
 	fullyConnectedBias = dl.variable(dl.zeros([LABELS_SIZE]));
 }
 
@@ -119,9 +119,9 @@ function restoreModelVariablesFromLocalStorage(){
 									'float32'));
 									
 	idx = len;
-	len += 4 * 4 * conv2OutputDepth * LABELS_SIZE;
+	len += 8 * 8 * conv2OutputDepth * LABELS_SIZE;
 	fullyConnectedWeights = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
-													[4 * 4 * conv2OutputDepth, LABELS_SIZE],
+													[8 * 8 * conv2OutputDepth, LABELS_SIZE],
 													'float32'));
 
 	idx = len;
