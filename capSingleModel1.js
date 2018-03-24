@@ -17,6 +17,7 @@ BATCH_SIZE = 10;
 var	LABELS_SIZE = 2; // 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 var GLOBAL_STEP = 0;
 const IMAGE_SIZE = 30;
+const OUT_LAYER_SIZE = 7; // computed or look at the layer 2 shape layer2.print()
 ////////////////////////////////
 
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
@@ -58,8 +59,8 @@ function initializeModelVariables(){
 
 	fullyConnectedWeights = dl.variable(
 		  	dl.randomNormal(
-				    [5 * 5 * conv2OutputDepth, LABELS_SIZE], 0,
-				    1 / Math.sqrt(5 * 5 * conv2OutputDepth)));
+				    [OUT_LAYER_SIZE * OUT_LAYER_SIZE * conv2OutputDepth, LABELS_SIZE], 0,
+				    1 / Math.sqrt(OUT_LAYER_SIZE * OUT_LAYER_SIZE * conv2OutputDepth)));
 	fullyConnectedBias = dl.variable(dl.zeros([LABELS_SIZE]));
 }
 
@@ -119,9 +120,9 @@ function restoreModelVariablesFromLocalStorage(){
 									'float32'));
 									
 	idx = len;
-	len += 5 * 5 * conv2OutputDepth * LABELS_SIZE;
+	len += OUT_LAYER_SIZE * OUT_LAYER_SIZE * conv2OutputDepth * LABELS_SIZE;
 	fullyConnectedWeights = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
-													[5 * 5 * conv2OutputDepth, LABELS_SIZE],
+													[OUT_LAYER_SIZE * OUT_LAYER_SIZE * conv2OutputDepth, LABELS_SIZE],
 													'float32'));
 
 	idx = len;
@@ -156,21 +157,21 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
   //    .add(fullyConnectedBias_input).sigmoid();
   //});
   
-  // Conv 1
+  // Conv 1 //.as4D(-1, IMAGE_SIZE, IMAGE_SIZE, 1)
   const layer1 = dl.tidy(() => {
-    return xs.as4D(-1, IMAGE_SIZE, IMAGE_SIZE, 1)
-    		.conv2d(conv1Weights, 1, 'same')
+    return xs.conv2d(conv1Weights, 1, 'same')
         .relu()
         .maxPool([2, 2], strides1, pad1);
   });
-
+	
   // Conv 2
   const layer2 = dl.tidy(() => {
     return layer1.conv2d(conv2Weights, 1, 'same')
         .relu()
         .maxPool([3, 3], strides2, pad2);
   });
-
+  console.log("layer2 ok");
+	console.log(layer2.print());
   // Final layer
   return layer2.as2D(-1, fullyConnectedWeights.shape[0])
       .matMul(fullyConnectedWeights)
