@@ -170,8 +170,8 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
         .relu()
         .maxPool([3, 3], strides2, pad2);
   });
-  console.log("layer2 ok");
-	console.log(layer2.print());
+  //console.log("layer2 ok");
+	//console.log(layer2.print());
   // Final layer
   return layer2.as2D(-1, fullyConnectedWeights.shape[0])
       .matMul(fullyConnectedWeights)
