@@ -67,7 +67,12 @@
 //
 //
 ////////////////////////////////////////////
-//
+// optimize for 1 character prediction
+// wondering if showPredictions should be async
+// but issue with scheduler: not waiting for predictions finish
+// => async would require more codes to handle wating before next step
+// report predictions at each show predictions
+
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -478,7 +483,7 @@ function makeTrainingBatchOfWrongPredictions(){
 	for(var i=0;i<iDataStack.length;i++){
 		var data = iDataStack[i];
 
-		if((data.label !== 'none') && (data.label != data.predictions[0].prediction)){
+		if((data.label !== 'none') && ((data.label==TARGET?TARGET:NOT_TARGET) != data.predictions[0].prediction)){
 			xs.push(makeTensorFromPixels(data));
 			labels.push(labelDict.getVect(data.label));
 		}
@@ -619,6 +624,8 @@ function showPredictions(){
 		//logAndDone.log(predprob);
 	}
 	logAndDone.log("predictions shown!");
+	
+	reportPredictions();
 }
 
 function reportPredictions(){
@@ -629,7 +636,7 @@ function reportPredictions(){
 	for(i=0;i<iDataStack.length;i++){
 		if(iDataStack[i].label!='none'){
 			totalSamples++;
-			if(iDataStack[i].label==iDataStack[i].predictions[0].prediction){
+			if((iDataStack[i].label==TARGET?TARGET:NOT_TARGET)==iDataStack[i].predictions[0].prediction){
 				goodPredictions++;
 				lessThan50pc += (iDataStack[i].predictions[0].probability<50)?1:0;
 				lessThan90pc += (iDataStack[i].predictions[0].probability<90)?1:0;
@@ -699,7 +706,6 @@ var report = {
 					
 					case 'predict':
 						showPredictions();
-						reportPredictions();
 						break;
 						
 					case 'probability':
