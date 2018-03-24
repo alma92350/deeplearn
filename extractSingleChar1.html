@@ -742,6 +742,7 @@ var report = {
 
 					case 'clear':
 						localStorage[modelName]='';
+						localStorage['GLOBAL_STEP']='';
 						report.send('Model storage cleared!');
 						break;
 											

@@ -70,6 +70,7 @@ function initializeModelVariables(){
 const modelName = 'singleCharModel1';
 function saveModelVariablesToLocalStorage(){
 	localStorage['GLOBAL_STEP'] = GLOBAL_STEP;
+	
 	var modelVariables = [//fullyConnectedWeights_Input.dataSync(),
 												//fullyConnectedBias_input.dataSync(),
 												conv1Weights.dataSync(),
@@ -89,7 +90,8 @@ function toFloatArray(array){
 }
 
 function restoreModelVariablesFromLocalStorage(){
-	GLOBAL_STEP = localStorage['GLOBAL_STEP'];
+	GLOBAL_STEP = parseInt(localStorage['GLOBAL_STEP']);
+
 	var modelVariables = localStorage[modelName].split(',');
 	var idx=0;
 	var len = 0; //IMAGE_SIZE * IMAGE_SIZE * hiddenInputLayerSize * hiddenInputLayerSize;
