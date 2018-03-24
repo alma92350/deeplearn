@@ -596,12 +596,12 @@ function makePredictionsByBatch(from,num){
 	}
 }
 
-async function showPredictions(){
+function showPredictions(){
 	var num = 150;
 	logAndDone.log("make predictions by batch");
 	for(from=0;from<iDataStack.length;from +=num){
 		makePredictionsByBatch(from,Math.min(num,iDataStack.length-from));
-		await dl.nextFrame();
+		//await dl.nextFrame();
 	}
 	
 	// show predictions from iDataStack
