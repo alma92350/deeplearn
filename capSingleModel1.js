@@ -29,11 +29,11 @@ const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 //var fullyConnectedBias_input;
 
 const FILTER_SIZE=5;
-const conv1OutputDepth = 16;
+const conv1OutputDepth = 15;
 var conv1Weights;
 
 const conv2InputDepth = conv1OutputDepth;
-const conv2OutputDepth = 32;
+const conv2OutputDepth = 30;
 var conv2Weights;
 
 var fullyConnectedWeights;
@@ -69,7 +69,7 @@ function initializeModelVariables(){
 const modelName = 'singleCharModel1';
 function saveModelVariablesToLocalStorage(){
 	var modelVariables = [//fullyConnectedWeights_Input.dataSync(),
-												fullyConnectedBias_input.dataSync(),
+												//fullyConnectedBias_input.dataSync(),
 												conv1Weights.dataSync(),
 												conv2Weights.dataSync(),
 												fullyConnectedWeights.dataSync(),
@@ -101,11 +101,11 @@ function restoreModelVariablesFromLocalStorage(){
 //	return idx+len;
 	
 							
-	idx = len;
-	len += hiddenInputLayerSize*hiddenInputLayerSize;
-	fullyConnectedBias_input = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
-															[hiddenInputLayerSize*hiddenInputLayerSize],
-															'float32'));	
+//	idx = len;
+//	len += hiddenInputLayerSize*hiddenInputLayerSize;
+//	fullyConnectedBias_input = dl.variable(dl.tensor(toFloatArray(modelVariables.slice(idx,len)),
+//															[hiddenInputLayerSize*hiddenInputLayerSize],
+//															'float32'));	
 	
 	idx = len;
 	len += FILTER_SIZE * FILTER_SIZE * conv1OutputDepth;
