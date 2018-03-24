@@ -76,7 +76,7 @@
 // set directly the training steps
 // reset Training steps after Stop
 // new command: clear model variable storage in local storage
-
+// auto save at each step
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -355,6 +355,8 @@ var Scheduler = {
 					TRAIN_STEPS = 100;
 				},
 	nextStep: function(){
+					saveModelVariablesToLocalStorage();
+					logAndDone.log("scheduler: model variables saved");
 					if(Scheduler.RUN_SCHEDULER){
 						switch (Scheduler._step){
 					
@@ -730,12 +732,12 @@ var report = {
 						
 					case 'save':
 						saveModelVariablesToLocalStorage();
-						report.send('Model variables saved');
+						report.send('Model variables saved @GLOBAL_STEP: ' + GLOBAL_STEP);
 						break;
 																										
 					case 'restore':
 						restoreModelVariablesFromLocalStorage();
-						report.send('Model variables restored');
+						report.send('Model variables restored @GLOBAL_STEP: ' + GLOBAL_STEP);
 						break;
 
 					case 'clear':
