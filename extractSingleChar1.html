@@ -77,6 +77,8 @@
 // reset Training steps after Stop
 // new command: clear model variable storage in local storage
 // auto save at each step
+// report model: under construction
+// improve structure of report
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -679,98 +681,102 @@ function generate(){
 	logAndDone.log("Training labeled data generated.");
 }
 /////////////////////////
+////// Commands /////////
+/////////////////////////
+const CommandNames = [
+	'run',
+	'pause',
+	'next',
+	'resume',
+	'stop',
+	'train',
+	'predict',
+	'proba',
+	'wrong',
+	'init var',
+	'save',
+	'restore',
+	'clear',
+	'report',
+	'reload',
+	'hi',
+	'talk',
+	'quiet',
+	'help'
+];
+
+const processCommands = [
+	Scheduler.run,
+	Scheduler.pause,
+	Scheduler.next,
+	Scheduler.resume,
+	Scheduler.stop,
+	function(){
+		TRAIN_STEPS = 3000;
+		trainModel_OnAll();
+	},
+	function(){
+		showPredictions();
+	},
+	function(){
+		TRAIN_STEPS = 3000;
+		trainModel_OnLowProbability();
+	},
+	function(){
+		TRAIN_STEPS = 3000;
+		trainModel_OnWrongPredictions();
+	},
+	initializeModelVariables,
+	function(){
+		saveModelVariablesToLocalStorage();
+		report.send('Model variables saved @GLOBAL_STEP: ' + GLOBAL_STEP);
+	},
+	function(){
+		restoreModelVariablesFromLocalStorage();
+		report.send('Model variables restored @GLOBAL_STEP: ' + GLOBAL_STEP);
+	},
+	function(){
+		localStorage[modelName]='';
+		localStorage['GLOBAL_STEP']='';
+		report.send('Model storage cleared!');
+	},
+	function(){
+		report.send("under construction: report model");
+	},
+	function(){
+		location.reload();
+	},
+	function(){
+		report.send('hello!');
+	},
+	function(){
+		logAndDone.talk = true;
+	},
+	function(){
+		logAndDone.talk = false;
+	},
+	function(){
+		report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
+		report.send('Model: "init var", save, restore, clear');
+		report.send('Other: reload, hi, talk, quiet');
+	}
+];
+
+/////////////////////////
 ///// reporting /////////
 /////////////////////////
 var report = {
 	name : Math.floor(Math.random()*1000),
 	ws : null,
-	processCommand: function(cmd){
-				switch(cmd){
-					case 'run':
-						Scheduler.run();
-						break;
-					
-					case 'pause':
-						Scheduler.pause();
-						break;
-					
-					case 'next':
-						TRAIN_STEPS=1;
-						break;
-											
-					case 'resume':
-						Scheduler.resume();
-						break;
-						
-					case 'stop':
-						Scheduler.stop();
-						break;
-						
-					case 'train':
-						TRAIN_STEPS = 3000;
-						trainModel_OnAll();
-						break;
-					
-					case 'predict':
-						showPredictions();
-						break;
-						
-					case 'probability':
-					case 'proba':
-						TRAIN_STEPS = 3000;
-						trainModel_OnLowProbability();
-						break;
-						
-					case 'wrong':
-						TRAIN_STEPS = 3000;
-						trainModel_OnWrongPredictions();
-						break;
-						
-					case 'init var':
-						initializeModelVariables();
-						break;
-						
-					case 'save':
-						saveModelVariablesToLocalStorage();
-						report.send('Model variables saved @GLOBAL_STEP: ' + GLOBAL_STEP);
-						break;
-																										
-					case 'restore':
-						restoreModelVariablesFromLocalStorage();
-						report.send('Model variables restored @GLOBAL_STEP: ' + GLOBAL_STEP);
-						break;
-
-					case 'clear':
-						localStorage[modelName]='';
-						localStorage['GLOBAL_STEP']='';
-						report.send('Model storage cleared!');
-						break;
-											
-					case 'reload':
-						location.reload();
-						break;
-					
-					case 'hi':
-						report.send('hello!');
-						break;
-					
-					case 'talk':
-						logAndDone.talk = true;
-						break;
-					
-					case 'quiet':
-						logAndDone.talk = false;
-						break;
-					
-					case 'help':
-						report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
-						report.send('Model: "init var", save, restore, clear');
-						report.send('Other: reload, hi, talk, quiet');
-						
-					default:
-						break;
+  processCommand2: function(cmd){
+				try {
+					processCommands[CommandNames.indexOf(cmd)]();
+				} catch (err) {
+					console.log(err);
+					report.send('Error: command "'+cmd+'" cannot be processed!');
 				}
 			},
+	
 	init : function(){
 				// wsUri = "wss://example.com/ws/websoket";
 				var wsUri = document.getElementById('webSocket').value;
@@ -810,7 +816,7 @@ var report = {
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
 					
 					if(payload.user=='firefox' || payload.user==('firefox.'+report.name)){
-						report.processCommand(payload.message);
+						report.processCommand2(payload.message.toLowerCase());
 					}
 				}
 			},

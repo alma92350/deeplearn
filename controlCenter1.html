@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+</head>
+
+<body>
+
+  <br>
+  <div>
+  	<table id="cmd_panel"></table>
+  </div>
+  <br>
+  <input id="webSocket" type="text" size=50 placeHolder="Address to a websocket">
+  <input id="reportbtn"  value="Init Report"  type="button">
+  <br>
+  <input id="unit_id" placeHolder="unit id" type="text" size=5 value="20">
+</body>
+
+<script>
+/////////////////////////
+////// Commands /////////
+/////////////////////////
+const CommandNames = [
+	'run',
+	'pause',
+	'next',
+	'resume',
+	'stop',
+	'train',
+	'predict',
+	'proba',
+	'wrong',
+	'init var',
+	'save',
+	'restore',
+	'clear',
+	'report',
+	'reload',
+	'hi',
+	'talk',
+	'quiet',
+	'help'
+];
+///////////////////////////
+////// Draw Commands //////
+///////////////////////////
+const cmdByRow = 5;
+const cmdPanel = document.getElementById("cmd_panel");
+var tableBody = "";
+for(var i=0;i<CommandNames.length;i+=cmdByRow){
+	var row = "<tr>";
+	for(var btn=0; (btn<cmdByRow)&&((i+btn)<CommandNames.length);btn++){
+		row += '<td><input id="'+CommandNames[btn+i]+'btn"  value="'+CommandNames[btn+i]+'"  type="button"></td>';
+		console.log(btn+i);
+	};
+	row += "</tr>";
+	tableBody += row;
+	//console.log(tableBody,i);	
+};
+
+cmdPanel.innerHTML = tableBody;
+
+function addEvent(idx){
+	var btn = document.getElementById(CommandNames[idx]+'btn');
+	btn.addEventListener('click', ()=>{console.log(idx);report.sendTo(CommandNames[idx])});
+}
+
+for(var i=0;i<CommandNames.length;i++){
+	addEvent(i);
+};
+/////////////////////////
+///// reporting /////////
+/////////////////////////
+var report = {
+	name : 'firefox',
+	ws : null,
+	processCommand: function(cmd){
+				switch(cmd) {
+					case 'help':
+						report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
+						report.send('Model: "init var", save, restore');
+						report.send('Other: reload, hi, talk, quiet');
+						
+					default:
+						break;
+				}
+			},
+	init : function(){
+				// wsUri = "wss://example.com/ws/websoket";
+				var wsUri = document.getElementById('webSocket').value;
+				var wsUriLocalStore = localStorage['wsUri'];
+				if(wsUri=="" && wsUriLocalStore=="") {
+					console.log("report not initialized!!");
+					return;
+				}
+				
+				if(wsUri==""){
+					document.getElementById('webSocket').value = wsUriLocalStore;
+					wsUri = wsUriLocalStore;
+				} else {
+					localStorage['wsUri'] = wsUri;
+				}
+				report.ws = new WebSocket(wsUri);
+				
+				report.ws.onopen = function(ev) {
+					console.log('[Connected]');
+					report.send('hi');
+				}
+
+				report.ws.onclose = function(ev) {
+					console.log('[Disconnected]');
+				}
+				///////////////////////////////////////
+				//////// remote control ///////////////
+				///////////////////////////////////////
+				report.ws.onmessage = function(ev) {
+					var payload = JSON.parse(ev.data);
+					console.log("["+payload.user+"]: "+payload.message);
+					/////// keep alive //////
+					clearTimeout(report.timer);
+					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+				}
+			},
+	timer : null,
+	send : function(message){
+				var payload = {
+					message: message,
+					user: report.name,
+				};
+				/////// keep alive //////
+				clearTimeout(report.timer);
+				report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+				report.ws.send(JSON.stringify(payload));
+			},
+	sendTo: function(message){
+					var unitId = document.getElementById("unit_id").value;
+					if(unitId==""){
+						alert("Provide Unit ID!");
+						return;
+					};
+					report.name = 'firefox.' + unitId;
+					console.log(message);
+					report.send(message);
+				},
+}
+report.init();
+/////////////////////////
+var foo = function(){
+var predictbtn = document.getElementById("predictbtn");
+predictbtn.addEventListener('click', ()=>{report.sendTo("predict")});
+var trainbtn1 = document.getElementById("trainbtn1");
+trainbtn1.addEventListener('click', ()=>{report.sendTo("train")});
+var trainbtn2 = document.getElementById("trainbtn2");
+trainbtn2.addEventListener('click', ()=>{report.sendTo("wrong")});
+var trainbtn3 = document.getElementById("trainbtn3");
+trainbtn3.addEventListener('click', ()=>{report.sendTo("probability")});
+
+var loadbtn = document.getElementById("loadbtn");
+loadbtn.addEventListener('click', ()=>{report.sendTo("load")});
+
+//////////Scheduler Buttons ///////////
+var runbtn = document.getElementById("runbtn");
+runbtn.addEventListener('click', ()=>{report.sendTo("run")});
+var pausebtn = document.getElementById("pausebtn");
+pausebtn.addEventListener('click', ()=>{report.sendTo("pause")});
+var resumebtn = document.getElementById("resumebtn");
+resumebtn.addEventListener('click', ()=>{report.sendTo("resume")});
+var nextbtn = document.getElementById("nextbtn");
+nextbtn.addEventListener('click', ()=>{report.sendTo("next")});
+var stopbtn = document.getElementById("stopbtn");
+stopbtn.addEventListener('click', ()=>{report.sendTo("stop")});
+/////////////////////////
+var reportbtn = document.getElementById("reportbtn");
+reportbtn.addEventListener('click', report.init);
+var generatebtn = document.getElementById("generatebtn");
+generatebtn.addEventListener('click', ()=>{report.sendTo("hi")});
+/////////////////////////
+var initbtn = document.getElementById("initbtn");
+initbtn.addEventListener('click', ()=>{report.sendTo("init var")});
+var savebtn = document.getElementById("savebtn");
+savebtn.addEventListener('click', ()=>{report.sendTo("save")});
+var restorebtn = document.getElementById("restorebtn");
+restorebtn.addEventListener('click', ()=>{report.sendTo("restore")});
+
+}
+</script>
+
