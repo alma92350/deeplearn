@@ -268,7 +268,7 @@ function displayStack(){
 
   var table = '<table border="5px"><tbody>';
   var count=0;
-  for(var row=0; row<Rows; row++){
+  for(var row=0; row<Rows && count<iDataStack.length; row++){
 	  var line1="",line2="";
 	  for(var i=0; i<Columns && count<iDataStack.length; i++,count++){
 	  	if(iDataStack[count].label=='none'){
