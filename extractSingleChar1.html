@@ -679,13 +679,32 @@ function reportPredictions(){
 	var lessThan50pc=0;
 	var lessThan90pc=0;
 	var totalSamples=0;
+	var set = new Set();
+	var results = {};
+	
 	for(i=0;i<iDataStack.length;i++){
-		if(iDataStack[i].label!='none'){
+		var lb = iDataStack[i].label;
+		if(lb!='none'){
+			
+			if(!set.has(lb)){
+				set.add(lb);
+				results[lb]={
+											ok : 0,
+											nok: 0,
+											proba_ok: 0,
+											proba_nok: 0
+										};
+			}
 			totalSamples++;
-			if((iDataStack[i].label==TARGET?TARGET:NOT_TARGET)==iDataStack[i].predictions[0].prediction){
+			if((lb==TARGET?TARGET:NOT_TARGET)==iDataStack[i].predictions[0].prediction){
 				goodPredictions++;
 				lessThan50pc += (iDataStack[i].predictions[0].probability<50)?1:0;
 				lessThan90pc += (iDataStack[i].predictions[0].probability<90)?1:0;
+				results[lb].ok++;
+				results[lb].proba_ok += iDataStack[i].predictions[0].probability;
+			} else {
+				results[lb].nok++;
+				results[lb].proba_nok += iDataStack[i].predictions[0].probability;
 			}
 		}
 	};
@@ -693,6 +712,11 @@ function reportPredictions(){
 	logAndDone.log("Prediction report: Good predictions : "+ goodPredictions);
 	logAndDone.log("Prediction report: Probability < 50%: "+ lessThan50pc);
 	logAndDone.log("Prediction report: Probability < 90%: "+ lessThan90pc);
+	for(let lb of set){
+		logAndDone.log(lb + 
+												": OK: "+results[lb].ok+"@"+(results[lb].ok!==0?Math.floor(results[lb].proba_ok/results[lb].ok):0)+
+												"%, NOK: "+results[lb].nok+"@"+(results[lb].nok!==0?Math.floor(results[lb].proba_nok/results[lb].nok):0)+"%");
+	}
 }
 
 /////////////////////////////////////////////////////////////////////
