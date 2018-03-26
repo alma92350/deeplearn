@@ -819,7 +819,7 @@ var report = {
 				// wsUri = "wss://example.com/ws/websoket";
 				var wsUri = document.getElementById('webSocket').value;
 				var wsUriLocalStore = localStorage['wsUri'];
-				if(wsUri=="" && wsUriLocalStore=="") {
+				if(wsUri==="" && wsUriLocalStore===undefined) {
 					console.log("report not initialized!!");
 					return;
 				}
