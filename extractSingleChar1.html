@@ -79,6 +79,11 @@
 // auto save at each step
 // report model: under construction
 // improve structure of report
+// use local report.name
+// new next training batch generation process
+// made show predictions asynchronous
+// modify the log and done to call prediction
+// after prediction call next step for scheduler
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -162,16 +167,47 @@ labelRevD.getLabel = function(oneHot){
 }
 
 ////////////////////////////////////////
-var trainingBatch = {};
+var trainingBatch = {
+	targetStart: 0,
+	targetLength: 0,
+};
 trainingBatch.nextTrainBatch = function(batchSize){
 
 	var xs = [];
 	var lb = [];
-	for(var i=0;i<batchSize;i++){
-		var idx = Math.floor((Math.random()*trainingBatch.size));
+	
+	// find TARGET segment: start and length
+	if(trainingBatch.targetLength==0){
+		const vectTarget = labelDict.getVect(TARGET);
+		
+		for(var i=0; i<trainingBatch.size;i++){
+			if(trainingBatch.Array_labels[i]===vectTarget){
+				trainingBatch.targetStart = i;
+				i=trainingBatch.size;
+			}
+		}
+		for(var i=trainingBatch.targetStart; i<trainingBatch.size;i++){
+			if(trainingBatch.Array_labels[i]!==vectTarget){
+				trainingBatch.targetLength = i - trainingBatch.targetStart;
+				i=trainingBatch.size;
+			}
+		}
+	};
+	
+	// Select half samples in target segment and half not in target segment
+	for(var i=0;i<Math.floor(batchSize/2);i++){
+		var idxTarget = Math.floor((Math.random()*trainingBatch.targetLength))+trainingBatch.targetStart;
+		
+		// <-------------size--------------------------------->
+		// .......<start----length---->.........
+		// <-------start----size-length--><---------length---->
+		var idxnt = Math.floor((Math.random()*(trainingBatch.size-trainingBatch.targetLength)));
+		var idxNotTarget = idxnt<trainingBatch.targetStart?idxnt:idxnt+trainingBatch.targetStart;
 
-		xs.push(trainingBatch.Array_xs[idx]);
-		lb.push(trainingBatch.Array_labels[idx]);
+		xs.push(trainingBatch.Array_xs[idxTarget]);
+		lb.push(trainingBatch.Array_labels[idxTarget]);
+		xs.push(trainingBatch.Array_xs[idxNotTarget]);
+		lb.push(trainingBatch.Array_labels[idxNotTarget]);
 	};
 	//logAndDone.log(xs,lb);
 	////////////////////////////////
@@ -365,7 +401,7 @@ var Scheduler = {
 							case 1:
 							case 3:
 							case 5:
-								showPredictions();
+								//showPredictions();
 								makeTrainingBatchOfWrongPredictions();
 								if(trainingBatch.size>0){
 									logAndDone.log("scheduler: Wrong prediction samples: " + trainingBatch.size);
@@ -380,7 +416,7 @@ var Scheduler = {
 							case 2:
 							case 4:
 							case 6:
-								showPredictions();
+								//showPredictions();
 								makeTrainingBatch_OnLowProbability(Scheduler._probaLevel);
 								if(trainingBatch.size>0){
 									logAndDone.log("scheduler: Low probability samples: " +
@@ -430,7 +466,8 @@ var logAndDone = {
 		};
 		/////////// Scheduler //////////
 		if(message == "Training done!")
-			Scheduler.nextStep();
+			//Scheduler.nextStep();
+			showPredictions(Scheduler.nextStep);
 	},
 };
 
@@ -535,7 +572,7 @@ function trainModel_OnAll(){
   makeTrainingBatch();
 
   logAndDone.log("train the model");
-	train(trainingBatch,logAndDone.log);
+  train(trainingBatch,logAndDone.log);
 }
 
 
@@ -605,12 +642,12 @@ function makePredictionsByBatch(from,num){
 	}
 }
 
-function showPredictions(){
+async function showPredictions(whenDone){
 	var num = 150;
 	logAndDone.log("make predictions by batch");
 	for(from=0;from<iDataStack.length;from +=num){
 		makePredictionsByBatch(from,Math.min(num,iDataStack.length-from));
-		//await dl.nextFrame();
+		await dl.nextFrame();
 	}
 	
 	// show predictions from iDataStack
@@ -630,6 +667,7 @@ function showPredictions(){
 	logAndDone.log("predictions shown!");
 	
 	reportPredictions();
+	whenDone();
 }
 
 function reportPredictions(){
@@ -716,7 +754,7 @@ const processCommands = [
 		trainModel_OnAll();
 	},
 	function(){
-		showPredictions();
+		showPredictions(()=>{logAndDone.log("prediction done!")});
 	},
 	function(){
 		TRAIN_STEPS = 3000;
@@ -766,7 +804,7 @@ const processCommands = [
 ///// reporting /////////
 /////////////////////////
 var report = {
-	name : Math.floor(Math.random()*1000),
+	name : localStorage['reportName']!==undefined?localStorage['reportName']:Math.floor(Math.random()*1000),
 	ws : null,
   processCommand2: function(cmd){
 				try {
@@ -835,13 +873,13 @@ var report = {
 report.init();
 /////////////////////////
 var predictbtn = document.getElementById("predictbtn");
-predictbtn.addEventListener('click', showPredictions);
+predictbtn.addEventListener('click', ()=>{showPredictions(()=>{logAndDone.log("predictions done!");});});
 var trainbtn1 = document.getElementById("trainbtn1");
-trainbtn1.addEventListener('click', trainModel_OnAll);
+trainbtn1.addEventListener('click', ()=>{Scheduler.pause(); trainModel_OnAll();});
 var trainbtn2 = document.getElementById("trainbtn2");
-trainbtn2.addEventListener('click', trainModel_OnWrongPredictions);
+trainbtn2.addEventListener('click', ()=>{Scheduler.pause(); trainModel_OnWrongPredictions();});
 var trainbtn3 = document.getElementById("trainbtn3");
-trainbtn3.addEventListener('click', trainModel_OnLowProbability);
+trainbtn3.addEventListener('click', ()=>{Scheduler.pause(); trainModel_OnLowProbability()});
 
 var loadbtn = document.getElementById("loadbtn");
 loadbtn.addEventListener('click', load);
