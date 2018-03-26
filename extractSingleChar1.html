@@ -30,12 +30,13 @@
   </div>
   <br>
   <img id="image_ori" src=""><br>
-  <input id="webSocket" type="text" size=50 placeHolder="Address to a websocket">
+  <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
   <input id="reportbtn"  value="Init Report"  type="button">
   <br>
-  <input id="input_label" type="text" size=5 value="20">
+  <input id="input_label" type="text" size=5 value="90">
 	<label id="lab_count">0</label>
   <div   id="div_results"></div>
+  <div   id="div_predictions"></div>
 </body>
 
 <script>
@@ -85,6 +86,8 @@
 // modify the log and done to call prediction
 // after prediction call next step for scheduler
 // save after each training then call predictions
+// report the ok/nok predictions for each label
+// display only the test samples not the training
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -247,9 +250,11 @@ function addEventToList(i){
 
 function addEventToCanvas(){
   for(var i=0;i<iDataStack.length;i++){
-		addEventToList(i);
-		var canvas = document.getElementById('div_canvas_'+i);
-		canvas.addEventListener('click',onClicks[i]);
+  	if(iDataStack[i].label=='none'){
+			addEventToList(i);
+			var canvas = document.getElementById('div_canvas_'+i);
+			canvas.addEventListener('click',onClicks[i]);
+		}
   }
 }
 
@@ -266,15 +271,19 @@ function displayStack(){
   for(var row=0; row<Rows; row++){
 	  var line1="",line2="";
 	  for(var i=0; i<Columns && count<iDataStack.length; i++,count++){
-		// stacked display format
-		line1 += '<td id="td1_'+count+'" align="center" width=100><canvas id="div_canvas_'+count+
-						'" width='+char_width+
-						' height='+char_height+
-						' style="center"></canvas></td>';
+	  	if(iDataStack[count].label=='none'){
+				// stacked display format
+				line1 += '<td id="td1_'+count+'" align="center" width=100><canvas id="div_canvas_'+count+
+								'" width='+char_width+
+								' height='+char_height+
+								' style="center"></canvas></td>';
 						
-		line2 += '<td id="td2_'+count+'" align="center"><label id="div_label_'+count+
-						'" style="center"> label: '+iDataStack[count].label+
-						'</label></td>';
+				line2 += '<td id="td2_'+count+'" align="center"><label id="div_label_'+count+
+								'" style="center"> label: '+iDataStack[count].label+
+								'</label></td>';
+			} else {
+				i--; // compensate increase of column
+			}
 	  };
 	  table += '<tr>'+line1+'</tr><tr>'+line2+'</tr>';
   };
@@ -284,9 +293,11 @@ function displayStack(){
   // display in canvas
   
   for(var i=0;i<iDataStack.length;i++){
-		var canvas = document.getElementById('div_canvas_'+i);
-    var ctx = canvas.getContext('2d');
-		ctx.putImageData(iDataStack[i],0,0);
+  	if(iDataStack[i].label=='none'){
+			var canvas = document.getElementById('div_canvas_'+i);
+		  var ctx = canvas.getContext('2d');
+			ctx.putImageData(iDataStack[i],0,0);
+		}
   };
 }
 
@@ -512,7 +523,7 @@ function trainModel_OnLowProbability(){
 	var labelValue = parseInt(document.getElementById('input_label').value);
 
   if(makeTrainingBatch_OnLowProbability(labelValue)<1){
-  	alert("Provide a higher probability!");
+  	logAndDone.log("Provide a higher probability!");
   	return;
   }
   logAndDone.log("train the model");
@@ -656,17 +667,18 @@ async function showPredictions(whenDone){
 	
 	// show predictions from iDataStack
 	for(var i=0; i<iDataStack.length;i++){
-		var divlab = document.getElementById("div_label_"+i);
+		if(iDataStack[i].label=='none'){
+			var divlab = document.getElementById("div_label_"+i);
 		
-		var predprob = iDataStack[i].predictions.map((p) => {
-			var pp='<tr>';
-			pp += '<td>' + p.prediction + ':</td><td> ' + p.probability + '% </td>';
-			pp += '</tr>';
-			return pp;
-			});
+			var predprob = iDataStack[i].predictions.map((p) => {
+				var pp='<tr>';
+				pp += '<td>' + p.prediction + ':</td><td> ' + p.probability + '% </td>';
+				pp += '</tr>';
+				return pp;
+				});
 		
-		divlab.innerHTML = '<table><tbody>' + predprob.join(' ') + '</tbody></table>'; //
-		//logAndDone.log(predprob);
+			divlab.innerHTML = '<table><tbody>' + predprob.join(' ') + '</tbody></table>';
+		}
 	}
 	logAndDone.log("predictions shown!");
 	
@@ -712,11 +724,17 @@ function reportPredictions(){
 	logAndDone.log("Prediction report: Good predictions : "+ goodPredictions);
 	logAndDone.log("Prediction report: Probability < 50%: "+ lessThan50pc);
 	logAndDone.log("Prediction report: Probability < 90%: "+ lessThan90pc);
+	
+	var divPred = document.getElementById("div_predictions");
+	var in_divPred="<br><h2>Prediction results</h2>";
 	for(let lb of set){
-		logAndDone.log(lb + 
-												": OK: "+results[lb].ok+"@"+(results[lb].ok!==0?Math.floor(results[lb].proba_ok/results[lb].ok):0)+
-												"%, NOK: "+results[lb].nok+"@"+(results[lb].nok!==0?Math.floor(results[lb].proba_nok/results[lb].nok):0)+"%");
+		var lbok = ": OK: "+results[lb].ok+"@"+(results[lb].ok!==0?Math.floor(results[lb].proba_ok/results[lb].ok):0);
+		var lbnok= "%, NOK: "+results[lb].nok+"@"+(results[lb].nok!==0?Math.floor(results[lb].proba_nok/results[lb].nok):0)+"%"
+		logAndDone.log(lb + lbok + lbnok);
+		in_divPred += "<p>"+ lb + lbok + lbnok +"</p>";
 	}
+	
+	divPred.innerHTML = in_divPred;
 }
 
 /////////////////////////////////////////////////////////////////////
