@@ -84,6 +84,7 @@
 // made show predictions asynchronous
 // modify the log and done to call prediction
 // after prediction call next step for scheduler
+// save after each training then call predictions
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -393,8 +394,8 @@ var Scheduler = {
 					TRAIN_STEPS = 100;
 				},
 	nextStep: function(){
-					saveModelVariablesToLocalStorage();
-					logAndDone.log("scheduler: model variables saved");
+					//saveModelVariablesToLocalStorage();
+					logAndDone.log("scheduler: Current step: "+Scheduler._step);
 					if(Scheduler.RUN_SCHEDULER){
 						switch (Scheduler._step){
 					
@@ -465,9 +466,12 @@ var logAndDone = {
 			}
 		};
 		/////////// Scheduler //////////
-		if(message == "Training done!")
+		if(message == "Training done!"){
 			//Scheduler.nextStep();
+			saveModelVariablesToLocalStorage();
+			logAndDone.log("Model variable saved!");
 			showPredictions(Scheduler.nextStep);
+		}
 	},
 };
 
