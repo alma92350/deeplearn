@@ -782,7 +782,8 @@ const CommandNames = [
 	'save',
 	'restore',
 	'clear',
-	'report',
+	'getmodel',
+	'setmodel',
 	'reload',
 	'hi',
 	'talk',
@@ -790,6 +791,8 @@ const CommandNames = [
 	'help',
 	'getcmds',
 ];
+
+var rxBuffer=null;
 
 const processCommands = [
 	Scheduler.run,
@@ -832,7 +835,20 @@ const processCommands = [
 									data: getModelVariables(),
 									globalStep: GLOBAL_STEP,
 								};
-		report.send("modelvar",data);
+		report.send("modelVar",data);
+	},
+	function(data){
+		// load model variables
+		try{
+			loadModelVariables(data.data);
+			GLOBAL_STEP = data.globalStep;
+			report.send("Model Variables loaded");
+		} catch (err) {
+			console.log(err);
+			report.send("Error: model Variables not Set");
+			report.send(err);
+			return;
+		}		
 	},
 	function(){
 		location.reload();

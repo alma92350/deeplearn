@@ -147,6 +147,26 @@ function restoreModelVariablesFromLocalStorage(){
 												'float32'));
 }
 
+function loadModelVariables(data){
+	function arrayOf(inp,len){
+		var out=[];
+		for(var i=0; i<len;i++) 
+			out.push(inp[i]);
+		return out;
+	}
+	conv1Weights = dl.variable(dl.tensor(arrayOf(data[0],FILTER_SIZE * FILTER_SIZE * conv1OutputDepth),
+									[FILTER_SIZE, FILTER_SIZE, 1, conv1OutputDepth],
+									'float32'));
+	conv2Weights = dl.variable(dl.tensor(arrayOf(data[1],FILTER_SIZE * FILTER_SIZE * conv2InputDepth * conv2OutputDepth),
+									[FILTER_SIZE, FILTER_SIZE, conv2InputDepth, conv2OutputDepth],
+									'float32'));
+	fullyConnectedWeights = dl.variable(dl.tensor(arrayOf(data[2],OUT_LAYER_SIZE * OUT_LAYER_SIZE * conv2OutputDepth * LABELS_SIZE),
+													[OUT_LAYER_SIZE * OUT_LAYER_SIZE * conv2OutputDepth, LABELS_SIZE],
+													'float32'));
+	fullyConnectedBias = dl.variable(dl.tensor(arrayOf(data[3],LABELS_SIZE),
+												[LABELS_SIZE],
+												'float32'));
+}
 /////////////////////
 // Loss function
 function loss(labels, ys) {  // : dl.Tensor2D: dl.Tensor2D
