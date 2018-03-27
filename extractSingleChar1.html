@@ -835,14 +835,25 @@ const processCommands = [
 									data: getModelVariables(),
 									globalStep: GLOBAL_STEP,
 								};
+		var cks = 0;
+		for(var i=0;i<data.data.length;i++)
+			for(var j=0;j<data.data[i].length;j++)
+				cks += data.data[i][j] + 1.0 ; 
+		data.cks = cks;
 		report.send("modelVar",data);
 	},
 	function(data){
 		// load model variables
 		try{
 			loadModelVariables(data.data);
+			var lmv = getModelVariables();
+			var cks = 0;
+			for(var i=0;i<lmv.length;i++)
+				for(var j=0;j<lmv[i].length;j++)
+					cks += data.data[i][j] + 1.0 ; 
+				
 			GLOBAL_STEP = data.globalStep;
-			report.send("Model Variables loaded");
+			report.send("Model Variables loaded epsilon: "+ Math.abs(cks-data.cks));
 		} catch (err) {
 			console.log(err);
 			report.send("Error: model Variables not Set");
@@ -937,6 +948,7 @@ var report = {
 					user: report.name,
 					data: data,
 				};
+				rxBuffer = payload;
 				/////// keep alive //////
 				clearTimeout(report.timer);
 				report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
