@@ -786,7 +786,8 @@ const CommandNames = [
 	'hi',
 	'talk',
 	'quiet',
-	'help'
+	'help',
+	'getcommands',
 ];
 
 const processCommands = [
@@ -843,7 +844,10 @@ const processCommands = [
 		report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
 		report.send('Model: "init var", save, restore, clear');
 		report.send('Other: reload, hi, talk, quiet');
-	}
+	},
+	function(){
+		report.send('commands',CommandNames);
+	},
 ];
 
 /////////////////////////
@@ -905,10 +909,11 @@ var report = {
 				}
 			},
 	timer : null,
-	send : function(message){
+	send : function(message,data=null){
 				var payload = {
 					message: message,
 					user: report.name,
+					data: data,
 				};
 				/////// keep alive //////
 				clearTimeout(report.timer);

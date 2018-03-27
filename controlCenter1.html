@@ -15,72 +15,72 @@
   <input id="reportbtn"  value="Init Report"  type="button">
   <br>
   <input id="unit_id" placeHolder="unit id" type="text" size=5 value="20">
-</body>
+  <div id="wrapper">
+    <div id="footer">
+      <div class="content">
+        <input type="text" id="user" placeholder="Who are you?" />
+        <input type="text" id="message" placeholder="What do you want to say?" />
+        <input type="button" id="send_btn" value="Send" onclick="sendMessage()">
+      </div>
+    </div>
+    
+    <div id="chat_box" class="content"></div>
+  </div>
 
 <script>
 /////////////////////////
 ////// Commands /////////
 /////////////////////////
-const CommandNames = [
-	'run',
-	'pause',
-	'next',
-	'resume',
-	'stop',
-	'train',
-	'predict',
-	'proba',
-	'wrong',
-	'init var',
-	'save',
-	'restore',
-	'clear',
-	'report',
-	'reload',
+var CommandNames = [
+	'getcommands',
 	'hi',
-	'talk',
-	'quiet',
 	'help'
 ];
 ///////////////////////////
 ////// Draw Commands //////
 ///////////////////////////
-const cmdByRow = 5;
-const cmdPanel = document.getElementById("cmd_panel");
-var tableBody = "";
-for(var i=0;i<CommandNames.length;i+=cmdByRow){
-	var row = "<tr>";
-	for(var btn=0; (btn<cmdByRow)&&((i+btn)<CommandNames.length);btn++){
-		row += '<td><input id="'+CommandNames[btn+i]+'btn"  value="'+CommandNames[btn+i]+'"  type="button"></td>';
-		console.log(btn+i);
+function drawCommands(){
+	const cmdByRow = 5;
+	const cmdPanel = document.getElementById("cmd_panel");
+	var tableBody = "";
+	for(var i=0;i<CommandNames.length;i+=cmdByRow){
+		var row = "<tr>";
+		for(var btn=0; (btn<cmdByRow)&&((i+btn)<CommandNames.length);btn++){
+			row += '<td><input id="'+CommandNames[btn+i]+'btn"  value="'+CommandNames[btn+i]+'"  type="button"></td>';
+			console.log(btn+i);
+		};
+		row += "</tr>";
+		tableBody += row;
+		//console.log(tableBody,i);	
 	};
-	row += "</tr>";
-	tableBody += row;
-	//console.log(tableBody,i);	
-};
 
-cmdPanel.innerHTML = tableBody;
+	cmdPanel.innerHTML = tableBody;
 
-function addEvent(idx){
-	var btn = document.getElementById(CommandNames[idx]+'btn');
-	btn.addEventListener('click', ()=>{console.log(idx);report.sendTo(CommandNames[idx])});
+	function addEvent(idx){
+		var btn = document.getElementById(CommandNames[idx]+'btn');
+		btn.addEventListener('click', ()=>{console.log(idx);report.sendTo(CommandNames[idx])});
+	}
+
+	for(var i=0;i<CommandNames.length;i++){
+		addEvent(i);
+	};
 }
-
-for(var i=0;i<CommandNames.length;i++){
-	addEvent(i);
-};
 /////////////////////////
 ///// reporting /////////
 /////////////////////////
 var report = {
 	name : 'firefox',
 	ws : null,
-	processCommand: function(cmd){
-				switch(cmd) {
-					case 'help':
-						report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
-						report.send('Model: "init var", save, restore');
-						report.send('Other: reload, hi, talk, quiet');
+	processResponse: function(payload){
+				createUserMessage(payload.user, payload.message);
+
+				var chat = document.getElementById('chat_box');
+				chat.scrollTop = chat.scrollHeight;
+				switch(payload.message) {
+					case 'commands':
+						CommandNames = payload.data;
+						drawCommands();
+						break;
 						
 					default:
 						break;
@@ -104,23 +104,31 @@ var report = {
 				report.ws = new WebSocket(wsUri);
 				
 				report.ws.onopen = function(ev) {
-					console.log('[Connected]');
+					createSystemMessage('[Connected]');
+					//console.log('[Connected]');
 					report.send('hi');
 				}
 
 				report.ws.onclose = function(ev) {
-					console.log('[Disconnected]');
+					createSystemMessage('[Disconnected]');
+					//console.log('[Disconnected]');
 				}
 				///////////////////////////////////////
 				//////// remote control ///////////////
 				///////////////////////////////////////
 				report.ws.onmessage = function(ev) {
 					var payload = JSON.parse(ev.data);
-					console.log("["+payload.user+"]: "+payload.message);
+					
+					//console.log("["+payload.user+"]: "+payload.message);
 					/////// keep alive //////
 					clearTimeout(report.timer);
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+					
+					report.processResponse(payload);
 				}
+				
+				////////// initialze the interface /////
+				drawCommands();
 			},
 	timer : null,
 	send : function(message){
@@ -145,44 +153,162 @@ var report = {
 				},
 }
 report.init();
-/////////////////////////
-var foo = function(){
-var predictbtn = document.getElementById("predictbtn");
-predictbtn.addEventListener('click', ()=>{report.sendTo("predict")});
-var trainbtn1 = document.getElementById("trainbtn1");
-trainbtn1.addEventListener('click', ()=>{report.sendTo("train")});
-var trainbtn2 = document.getElementById("trainbtn2");
-trainbtn2.addEventListener('click', ()=>{report.sendTo("wrong")});
-var trainbtn3 = document.getElementById("trainbtn3");
-trainbtn3.addEventListener('click', ()=>{report.sendTo("probability")});
 
-var loadbtn = document.getElementById("loadbtn");
-loadbtn.addEventListener('click', ()=>{report.sendTo("load")});
+/////////////////////////////////
+/////////// Chat ////////////////
+/////////////////////////////////
+function createSystemMessage(messageStr) {
+	message = document.createTextNode(messageStr);
 
-//////////Scheduler Buttons ///////////
-var runbtn = document.getElementById("runbtn");
-runbtn.addEventListener('click', ()=>{report.sendTo("run")});
-var pausebtn = document.getElementById("pausebtn");
-pausebtn.addEventListener('click', ()=>{report.sendTo("pause")});
-var resumebtn = document.getElementById("resumebtn");
-resumebtn.addEventListener('click', ()=>{report.sendTo("resume")});
-var nextbtn = document.getElementById("nextbtn");
-nextbtn.addEventListener('click', ()=>{report.sendTo("next")});
-var stopbtn = document.getElementById("stopbtn");
-stopbtn.addEventListener('click', ()=>{report.sendTo("stop")});
-/////////////////////////
-var reportbtn = document.getElementById("reportbtn");
-reportbtn.addEventListener('click', report.init);
-var generatebtn = document.getElementById("generatebtn");
-generatebtn.addEventListener('click', ()=>{report.sendTo("hi")});
-/////////////////////////
-var initbtn = document.getElementById("initbtn");
-initbtn.addEventListener('click', ()=>{report.sendTo("init var")});
-var savebtn = document.getElementById("savebtn");
-savebtn.addEventListener('click', ()=>{report.sendTo("save")});
-var restorebtn = document.getElementById("restorebtn");
-restorebtn.addEventListener('click', ()=>{report.sendTo("restore")});
+	var messageBox = document.createElement('p');
+	messageBox.className = 'system';
 
+	messageBox.appendChild(message);
+
+	var chat = document.getElementById('chat_box');
+	chat.appendChild(messageBox);
+}
+
+function createUserMessage(userStr, messageStr) {
+	user = document.createTextNode(userStr + ': ');
+
+	var userBox = document.createElement('span');
+	userBox.className = 'username';
+	userBox.appendChild(user);
+
+	var message = document.createTextNode(messageStr);
+
+	var messageBox = document.createElement('p');
+	messageBox.appendChild(userBox);
+	messageBox.appendChild(message);
+
+	var chat = document.getElementById('chat_box');
+	chat.appendChild(messageBox);
+}
+
+function sendMessage() {
+	var user = document.getElementById('user');
+	var message = document.getElementById('message');
+
+	var payload = {
+	  message: message.value,
+	  user: user.value
+	};
+
+	report.send(message.value);
+	message.value = "";
 }
 </script>
+<style type="text/css">
+	* {
+	  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+	  font-style: italic;
+	  font-size: 24px;
+	}
 
+	html, body, #wrapper {
+   margin: 0;
+   padding: 0;
+   height: 100%;
+  }
+
+	#wrapper {
+    background-color: #ecf0f1;
+  }
+
+  #chat_box {
+    box-sizing: border-box;
+    height: 90%;
+    overflow: auto;
+    padding-bottom: 100px;
+  }
+
+  #footer {
+    box-sizing: border-box;
+    position: fixed;
+    bottom: 0;
+    height: 50px;
+    width: 100%;
+    background-color: #2980b9;
+  }
+
+  #footer .content {
+    padding-top: 4px;
+    position: relative;
+  }
+
+  #user { width: 20%; }
+  #message { width: 68%; }
+  #send_btn {
+    width: 10%;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+  }
+
+  .content {
+    width: 70%;
+    margin: 0 auto;
+  }
+
+  input[type="text"],
+  input[type="button"] {
+    border: 0;
+    color: #fff;
+  }
+
+  input[type="text"] {
+    background-color: #146EA8;
+    padding: 3px 10px;
+  }
+
+  input[type="button"] {
+    background-color: #f39c12;
+    border-right: 2px solid #e67e22;
+    border-bottom: 2px solid #e67e22;
+    min-width: 70px;
+    display: inline-block;
+  }
+
+  input[type="button"]:hover {
+    background-color: #e67e22;
+    border-right: 2px solid #f39c12;
+    border-bottom: 2px solid #f39c12;
+    cursor: pointer;
+  }
+
+  .system,
+  .username {
+    color: #aaa;
+    font-style: italic;
+    font-family: monospace;
+    font-size: 16px;
+  }
+
+  @media(max-width: 1000px) {
+    .content { width: 90%; }
+  }
+
+  @media(max-width: 780px) {
+    #footer { height: 91px; }
+    #chat_box { padding-bottom: 91px; }
+
+    #user { width: 100%; }
+    #message { width: 80%; }
+  }
+
+  @media(max-width: 400px) {
+    #footer { height: 135px; }
+    #chat_box { padding-bottom: 135px; }
+
+    #message { width: 100%; }
+    #send_btn {
+      position: relative;
+      margin-top: 3px;
+      width: 100%;
+    }
+  }
+</style>
+</body>
+</html>
