@@ -773,6 +773,7 @@ const CommandNames = [
 	'next',
 	'resume',
 	'stop',
+	'steps',
 	'train',
 	'predict',
 	'proba',
@@ -787,7 +788,7 @@ const CommandNames = [
 	'talk',
 	'quiet',
 	'help',
-	'getcommands',
+	'getcmds',
 ];
 
 const processCommands = [
@@ -796,19 +797,20 @@ const processCommands = [
 	Scheduler.next,
 	Scheduler.resume,
 	Scheduler.stop,
+	function(data){
+		TRAIN_STEPS = parseInt(data);
+		report.send("TRAIN_STEPS: "+TRAIN_STEPS);
+	},
 	function(){
-		TRAIN_STEPS = 3000;
 		trainModel_OnAll();
 	},
 	function(){
 		showPredictions(()=>{logAndDone.log("prediction done!")});
 	},
 	function(){
-		TRAIN_STEPS = 3000;
 		trainModel_OnLowProbability();
 	},
 	function(){
-		TRAIN_STEPS = 3000;
 		trainModel_OnWrongPredictions();
 	},
 	initializeModelVariables,
@@ -826,7 +828,11 @@ const processCommands = [
 		report.send('Model storage cleared!');
 	},
 	function(){
-		report.send("under construction: report model");
+		var data = {
+									data: getModelVariables(),
+									globalStep: GLOBAL_STEP,
+								};
+		report.send("modelvar",data);
 	},
 	function(){
 		location.reload();
@@ -856,9 +862,9 @@ const processCommands = [
 var report = {
 	name : localStorage['reportName']!==undefined?localStorage['reportName']:Math.floor(Math.random()*1000),
 	ws : null,
-  processCommand2: function(cmd){
+  processCommand2: function(cmd,data){
 				try {
-					processCommands[CommandNames.indexOf(cmd)]();
+					processCommands[CommandNames.indexOf(cmd)](data);
 				} catch (err) {
 					console.log(err);
 					report.send('Error: command "'+cmd+'" cannot be processed!');
@@ -904,7 +910,7 @@ var report = {
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
 					
 					if(payload.user=='firefox' || payload.user==('firefox.'+report.name)){
-						report.processCommand2(payload.message.toLowerCase());
+						report.processCommand2(payload.message.toLowerCase(),payload.data);
 					}
 				}
 			},
