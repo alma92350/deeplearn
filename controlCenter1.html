@@ -82,10 +82,7 @@ var report = {
 						break;
 						
 					case 'modelVar':
-						report.modelVar = {
-																data: payload.data,
-																cks : payload.cks
-															};
+						report.modelVar = payload.data;
 						console.log(payload.data);
 						break;
 												
