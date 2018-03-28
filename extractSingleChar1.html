@@ -764,7 +764,7 @@ function generate(labels=_LABELS){
 		canvas.width = CANVAS_SIZE;
 		canvas.height = CANVAS_SIZE;
 		
-		iDataStack = iDataStack.concat(makeLabelBatch(_LABELS[i].toUpperCase(),ctx));
+		iDataStack = iDataStack.concat(makeLabelBatch(labels[i].toUpperCase(),ctx));
 	};
 	displayStack();
 	logAndDone.log("Training labeled data generated.");
