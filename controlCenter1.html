@@ -5,16 +5,13 @@
 </head>
 
 <body>
-
-  <br>
   <div>
   	<table id="cmd_panel"></table>
   </div>
-  <br>
-  <input id="webSocket" type="text" size=50 placeHolder="Address to a websocket">
+  <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
   <input id="reportbtn"  value="Init Report"  type="button">
-  <br>
-  <input id="unit_id" placeHolder="unit id" type="text" size=5 value="20">
+  <input id="unit_id" placeHolder="unit id" type="text" size=5 value="nini">
+  <input id="data" placeHolder="data" type="text" size=10 value="3000">
   <div id="wrapper">
     <div id="footer">
       <div class="content">
@@ -32,7 +29,8 @@
 ////// Commands /////////
 /////////////////////////
 var CommandNames = [
-	'getcommands',
+	'reload',
+	'getcmds',
 	'hi',
 	'help'
 ];
@@ -40,7 +38,7 @@ var CommandNames = [
 ////// Draw Commands //////
 ///////////////////////////
 function drawCommands(){
-	const cmdByRow = 5;
+	const cmdByRow = 8;
 	const cmdPanel = document.getElementById("cmd_panel");
 	var tableBody = "";
 	for(var i=0;i<CommandNames.length;i+=cmdByRow){
@@ -71,6 +69,7 @@ function drawCommands(){
 var report = {
 	name : 'firefox',
 	ws : null,
+	modelVar: null,
 	processResponse: function(payload){
 				createUserMessage(payload.user, payload.message);
 
@@ -82,6 +81,14 @@ var report = {
 						drawCommands();
 						break;
 						
+					case 'modelVar':
+						report.modelVar = {
+																data: payload.data,
+																cks : payload.cks
+															};
+						console.log(payload.data);
+						break;
+												
 					default:
 						break;
 				}
@@ -131,26 +138,34 @@ var report = {
 				drawCommands();
 			},
 	timer : null,
-	send : function(message){
-				var payload = {
-					message: message,
-					user: report.name,
-				};
-				/////// keep alive //////
-				clearTimeout(report.timer);
-				report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
-				report.ws.send(JSON.stringify(payload));
-			},
+	send : function(message,toUnit,data){
+						var payload = {
+							message: message,
+							user: report.name+toUnit,
+							data: data,
+						};
+						/////// keep alive //////
+						clearTimeout(report.timer);
+						report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+						report.ws.send(JSON.stringify(payload));
+					},
 	sendTo: function(message){
-					var unitId = document.getElementById("unit_id").value;
-					if(unitId==""){
-						alert("Provide Unit ID!");
-						return;
-					};
-					report.name = 'firefox.' + unitId;
-					console.log(message);
-					report.send(message);
-				},
+						var data = document.getElementById("data").value;
+						var unitId = document.getElementById("unit_id").value;
+						
+						switch(message){
+							case 'setmodel':
+								data = report.modelVar;
+								break;
+								
+							default:
+								break;
+						}
+
+						//report.name = 'firefox' + unitId;
+						console.log(message);
+						report.send(message,unitId,data);
+					},
 }
 report.init();
 
@@ -203,13 +218,13 @@ function sendMessage() {
 	* {
 	  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
 	  font-style: italic;
-	  font-size: 24px;
+	  font-size: 18px;
 	}
 
 	html, body, #wrapper {
    margin: 0;
    padding: 0;
-   height: 100%;
+   height: 400px;
   }
 
 	#wrapper {
@@ -218,16 +233,16 @@ function sendMessage() {
 
   #chat_box {
     box-sizing: border-box;
-    height: 90%;
+    height: 400px;
     overflow: auto;
-    padding-bottom: 100px;
+    padding-bottom: 200px;
   }
 
   #footer {
     box-sizing: border-box;
     position: fixed;
     bottom: 0;
-    height: 50px;
+    height: 40px;
     width: 100%;
     background-color: #2980b9;
   }
@@ -283,7 +298,7 @@ function sendMessage() {
     color: #aaa;
     font-style: italic;
     font-family: monospace;
-    font-size: 16px;
+    font-size: 14px;
   }
 
   @media(max-width: 1000px) {
