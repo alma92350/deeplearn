@@ -126,7 +126,7 @@ var report = {
 					//console.log("["+payload.user+"]: "+payload.message);
 					/////// keep alive //////
 					clearTimeout(report.timer);
-					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+					report.timer = setTimeout(()=>{report.send("hi");}, 30000);
 					
 					report.processResponse(payload);
 				}
@@ -143,7 +143,7 @@ var report = {
 						};
 						/////// keep alive //////
 						clearTimeout(report.timer);
-						report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+						report.timer = setTimeout(()=>{report.send("hi");}, 30000);
 						report.ws.send(JSON.stringify(payload));
 					},
 	sendTo: function(message){
