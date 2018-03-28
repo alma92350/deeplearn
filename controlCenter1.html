@@ -135,7 +135,7 @@ var report = {
 				drawCommands();
 			},
 	timer : null,
-	send : function(message,toUnit,data){
+	send : function(message,toUnit='',data=null){
 						var payload = {
 							message: message,
 							user: report.name+toUnit,
