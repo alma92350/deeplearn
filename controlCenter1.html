@@ -15,9 +15,18 @@
   <div id="wrapper">
     <div id="footer">
       <div class="content">
-        <input type="text" id="user" placeholder="Who are you?" />
-        <input type="text" id="message" placeholder="What do you want to say?" />
-        <input type="button" id="send_btn" value="Send" onclick="sendMessage()">
+        <table>
+					<tr>
+						  <td>Filename to Save As:</td>
+						  <td><input id="inputFileNameToSaveAs"></input></td>
+						  <td><button onclick="saveModelVar()">Save ModelVar to File</button></td>
+					</tr>
+					<tr>
+						  <td>Select a File to Load:</td>
+						  <td><input type="file" id="fileToLoad"></td>
+						  <td><button onclick="loadModelVar()">Load ModelVar from File</button><td>
+					</tr>
+				</table>
       </div>
     </div>
     
@@ -210,6 +219,46 @@ function sendMessage() {
 	report.send(message.value);
 	message.value = "";
 }
+
+////////////////////////////////////
+/////// file management ////////////
+////////////////////////////////////
+function saveModelVar(){
+    var textToSave = JSON.stringify(report.modelVar);
+    var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
+    var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
+    var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
+ 		
+ 		console.log("save: "+fileNameToSaveAs);
+ 		
+    var downloadLink = document.createElement("a");
+    downloadLink.download = fileNameToSaveAs;
+    downloadLink.innerHTML = "Download File";
+    downloadLink.href = textToSaveAsURL;
+    downloadLink.onclick = destroyClickedElement;
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+ 
+    downloadLink.click();	
+}
+
+function destroyClickedElement(event)
+{
+    document.body.removeChild(event.target);
+}
+
+function loadModelVar(){
+    var fileToLoad = document.getElementById("fileToLoad").files[0];
+ 
+    var fileReader = new FileReader();
+    fileReader.onload = function(fileLoadedEvent) 
+    {
+        var textFromFileLoaded = fileLoadedEvent.target.result;
+        report.modelVar = JSON.parse(textFromFileLoaded);
+    };
+    fileReader.readAsText(fileToLoad, "UTF-8");	
+}
+
 </script>
 <style type="text/css">
 	* {
@@ -239,7 +288,7 @@ function sendMessage() {
     box-sizing: border-box;
     position: fixed;
     bottom: 0;
-    height: 40px;
+    height: 90px;
     width: 100%;
     background-color: #2980b9;
   }
@@ -303,16 +352,16 @@ function sendMessage() {
   }
 
   @media(max-width: 780px) {
-    #footer { height: 91px; }
-    #chat_box { padding-bottom: 91px; }
+    #footer { height: 191px; }
+    #chat_box { padding-bottom: 191px; }
 
     #user { width: 100%; }
     #message { width: 80%; }
   }
 
   @media(max-width: 400px) {
-    #footer { height: 135px; }
-    #chat_box { padding-bottom: 135px; }
+    #footer { height: 235px; }
+    #chat_box { padding-bottom: 235px; }
 
     #message { width: 100%; }
     #send_btn {

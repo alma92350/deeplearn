@@ -120,6 +120,7 @@ var	  onClicks=[];
 var   _LABELS =['2','3','4','5','6','9',
 				'A','B','C','D','E','F','G','H','K','L',
 				'M','N','P','R','T','W','X','Y','Z','none'];
+var		LABELS_USED = [];
 
 var		TARGET = '2';
 var		NOT_TARGET = 'nok';
@@ -141,6 +142,7 @@ var labelRevD = [];
 
 function initialize(labels=_LABELS){
 	//report.init();
+	LABELS_USED = labels;
 	iDataStack = [];
 	onClicks = [];
 	num_files = 0;
@@ -691,6 +693,8 @@ async function showPredictions(whenDone){
 	whenDone();
 }
 
+var lastPredictions={};
+
 function reportPredictions(){
 	var goodPredictions=0;
 	var lessThan50pc=0;
@@ -740,6 +744,15 @@ function reportPredictions(){
 	}
 	
 	divPred.innerHTML = in_divPred;
+	
+	//////// keep last predictions //////////
+	lastPredictions = {
+											totalSamples : totalSamples,
+											goodPredictions: goodPredictions,
+											lessThan50pc: lessThan50pc,
+											lessThan90pc: lessThan90pc,
+											in_divPred: in_divPred
+										};
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -842,30 +855,25 @@ const processCommands = [
 		localStorage['GLOBAL_STEP']='';
 		report.send('Model storage cleared!');
 	},
+	////// get model variables ///////
 	function(){
 		var data = {
+									target: TARGET,
+									labelsUsed: LABELS_USED,
 									data: getModelVariables(),
 									globalStep: GLOBAL_STEP,
+									lastPredictions: lastPredictions,
 								};
-		var cks = 0;
-		for(var i=0;i<data.data.length;i++)
-			for(var j=0;j<data.data[i].length;j++)
-				cks += data.data[i][j] + 1.0 ; 
-		data.cks = cks;
 		report.send("modelVar",data);
 	},
+	////// set model variables
 	function(data){
 		// load model variables
 		try{
 			loadModelVariables(data.data);
-			var lmv = getModelVariables();
-			var cks = 0;
-			for(var i=0;i<lmv.length;i++)
-				for(var j=0;j<lmv[i].length;j++)
-					cks += data.data[i][j] + 1.0 ; 
-				
+			
 			GLOBAL_STEP = data.globalStep;
-			report.send("Model Variables loaded epsilon: "+ Math.abs(cks-data.cks));
+			report.send("Model Variables loaded");
 		} catch (err) {
 			console.log(err);
 			report.send("Error: model Variables not Set");
