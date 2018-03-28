@@ -803,8 +803,9 @@ var rxBuffer=null;
 const processCommands = [
 	function(data){
 		var labels = data.split(',');
+		if(!labels.includes('none')) labels.push('none');
 		logAndDone.log(labels);
-		initialize(data);
+		initialize(labels);
 	},
 	Scheduler.run,
 	Scheduler.pause,
