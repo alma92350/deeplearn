@@ -88,6 +88,7 @@
 // save after each training then call predictions
 // report the ok/nok predictions for each label
 // display only the test samples not the training
+// allow subset of original labels
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -138,8 +139,12 @@ var labelDict = {
 };
 var labelRevD = [];
 
-function initialize(){
+function initialize(labels=_LABELS){
 	//report.init();
+	iDataStack = [];
+	onClicks = [];
+	num_files = 0;
+	
 	LABELS_SIZE = 2; // for model
 	initializeModelVariables();
 	
@@ -159,10 +164,10 @@ function initialize(){
 	};
 	
 	logAndDone.log("generating inputs");
-	generate();
+	generate(labels);
 	
 	logAndDone.log("loading...once");
-	load()
+	load();
 	
 }
 
@@ -751,9 +756,9 @@ function getInputPix1d(canvas){
 }
 
 /////////////////////////
-function generate(){
+function generate(labels=_LABELS){
 	// get context for char batch generation	
-	for(i=0;i<_LABELS.length-1;i++){
+	for(i=0;i<labels.length-1;i++){
 		const canvas = document.getElementById("canvas_ori");
 		const ctx = canvas.getContext("2d");
 		canvas.width = CANVAS_SIZE;
@@ -768,6 +773,7 @@ function generate(){
 ////// Commands /////////
 /////////////////////////
 const CommandNames = [
+	're-init',
 	'run',
 	'pause',
 	'next',
@@ -795,6 +801,11 @@ const CommandNames = [
 var rxBuffer=null;
 
 const processCommands = [
+	function(data){
+		var labels = data.split(',');
+		logAndDone.log(labels);
+		initialize(data);
+	},
 	Scheduler.run,
 	Scheduler.pause,
 	Scheduler.next,
@@ -874,9 +885,7 @@ const processCommands = [
 		logAndDone.talk = false;
 	},
 	function(){
-		report.send('Scheduler: run, stop, pause, resume, train, predict, proba, wrong');
-		report.send('Model: "init var", save, restore, clear');
-		report.send('Other: reload, hi, talk, quiet');
+		report.send('Supported Commands: ' + CommandNames);
 	},
 	function(){
 		report.send('commands',CommandNames);
@@ -935,6 +944,7 @@ var report = {
 					/////// keep alive //////
 					clearTimeout(report.timer);
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 30000);
+					if(payload.message==='coucou!') return;
 					
 					if(payload.user=='firefox' || payload.user==('firefox.'+report.name)){
 						report.processCommand2(payload.message.toLowerCase(),payload.data);
