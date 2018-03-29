@@ -12,26 +12,26 @@
   <canvas id="canvas_out2"></canvas><br>
   
   <div>
-  <input id="generatebtn" value="Generate" type="button">
-	<input id="loadbtn" value="Load" type="button">
+  <input id="generatebtn" value="Generate" onclick="generate()" type="button">
+	<input id="loadbtn" value="Load" onclick="load()" type="button">
 	<input id="trainbtn1" value="Train (initial)" type="button">
 	<br>
 	<input id="predictbtn" value="Predict" type="button">
 	<input id="trainbtn2" value="Train (wrong)" type="button">
 	<input id="trainbtn3" value="Train (probability)" type="button">
 	<br>
-	<input id="runbtn"   value="RUN"   type="button">
-	<input id="pausebtn" value="PAUSE" type="button">
-	<input id="stopbtn"  value="STOP"  type="button">
+	<input id="runbtn"   value="RUN"   onclick="Scheduler.run()"    type="button">
+	<input id="pausebtn" value="PAUSE" onclick="Scheduler.pause()"  type="button">
+	<input id="stopbtn"  value="STOP"  onclick="Scheduler.stop()"   type="button">
 	<br>
-	<input id="initbtn"  value="INIT"  type="button">
-	<input id="savebtn"  value="Save"  type="button">
-	<input id="restorebtn"  value="Restore"  type="button">
+	<input id="initbtn"  value="INIT"  onclick="initialize()" type="button">
+	<input id="savebtn"  value="Save"  onclick="saveModelVariablesToLocalStorage()" type="button">
+	<input id="restorebtn"  value="Restore"  onclick="restoreModelVariablesFromLocalStorage()" type="button">
   </div>
   <br>
   <img id="image_ori" src=""><br>
   <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
-  <input id="reportbtn"  value="Init Report"  type="button">
+  <input id="reportbtn"  value="Init Report" onclick="report.init()" type="button">
   <br>
   <input id="input_label" type="text" size=5 value="90">
 	<label id="lab_count">0</label>
@@ -89,6 +89,10 @@
 // report the ok/nok predictions for each label
 // display only the test samples not the training
 // allow subset of original labels
+// remove some button events
+// synchronize last predictions varalbe to global step
+// report predictions on not labeled data
+// send automatically data when training done
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -317,6 +321,8 @@ function capture(){
 		var ctxout = canvas_out.getContext('2d');
 		var idata = ctxout.getImageData(offset[offset_index],0,char_width, char_height);
 		idata.label = "none";
+		idata.src = image_ori.src;
+		idata.idx = offset_index;
 		iDataStack.push(idata);
   };
 
@@ -367,7 +373,7 @@ img.onload = function() {
   } else load();
 };
 
-var image_ori = document.getElementById('image_ori');
+const image_ori = document.getElementById('image_ori');
 function load(){
 	image_ori.src = 'captchas/captcha' + num_files + '.png';
 	img.src = image_ori.src;
@@ -488,7 +494,15 @@ var logAndDone = {
 			//Scheduler.nextStep();
 			saveModelVariablesToLocalStorage();
 			logAndDone.log("Model variable saved!");
-			showPredictions(Scheduler.nextStep);
+			report.processCommand2('getmodel');
+			try {
+				showPredictions(()=>{
+										report.processCommand2('getmodel');
+										Scheduler.nextStep();
+									});
+			} catch(err){
+				report.send("Error: could not perform predictions" + err);
+			}
 		}
 	},
 };
@@ -710,11 +724,11 @@ function reportPredictions(){
 			if(!set.has(lb)){
 				set.add(lb);
 				results[lb]={
-											ok : 0,
-											nok: 0,
-											proba_ok: 0,
-											proba_nok: 0
-										};
+								ok : 0,
+								nok: 0,
+								proba_ok: 0,
+								proba_nok: 0
+							};
 			}
 			totalSamples++;
 			if((lb==TARGET?TARGET:NOT_TARGET)==iDataStack[i].predictions[0].prediction){
@@ -746,13 +760,32 @@ function reportPredictions(){
 	divPred.innerHTML = in_divPred;
 	
 	//////// keep last predictions //////////
+	var unlabeled = [];
+	for(i=0;i<iDataStack.length;i++){
+		var lb = iDataStack[i].label;
+		if(lb==='none'){
+			unlabeled.push(
+				{
+					src: iDataStack[i].src,
+					idx: iDataStack[i].idx,
+					pred:iDataStack[i].predictions[0].prediction,
+					proba:iDataStack[i].predictions[0].probability,
+				}
+			);
+		}
+	}
 	lastPredictions = {
-											totalSamples : totalSamples,
-											goodPredictions: goodPredictions,
-											lessThan50pc: lessThan50pc,
-											lessThan90pc: lessThan90pc,
-											in_divPred: in_divPred
-										};
+							globalStep : GLOBAL_STEP,
+							train_steps : TRAIN_STEPS,
+							target: TARGET,
+							labelsUsed: LABELS_USED,
+							totalSamples : totalSamples,
+							goodPredictions: goodPredictions,
+							lessThan50pc: lessThan50pc,
+							lessThan90pc: lessThan90pc,
+							in_divPred: in_divPred,
+							unlabeled: unlabeled,
+						};
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -858,12 +891,13 @@ const processCommands = [
 	////// get model variables ///////
 	function(){
 		var data = {
-									target: TARGET,
-									labelsUsed: LABELS_USED,
-									data: getModelVariables(),
-									globalStep: GLOBAL_STEP,
-									lastPredictions: lastPredictions,
-								};
+						target: TARGET,
+						labelsUsed: LABELS_USED,
+						data: getModelVariables(),
+						globalStep: GLOBAL_STEP,
+						train_steps: TRAIN_STEPS,
+						lastPredictions: lastPredictions,
+					};
 		report.send("modelVar",data);
 	},
 	////// set model variables
@@ -873,6 +907,8 @@ const processCommands = [
 			loadModelVariables(data.data);
 			
 			GLOBAL_STEP = data.globalStep;
+			TRAIN_STEPS = data.train_steps;
+			initialize(data.labelsUsed);
 			report.send("Model Variables loaded");
 		} catch (err) {
 			console.log(err);
@@ -975,7 +1011,9 @@ var report = {
 			},
 }
 report.init();
-/////////////////////////
+/////////////////////////////////
+//// Complex button click ///////
+/////////////////////////////////
 var predictbtn = document.getElementById("predictbtn");
 predictbtn.addEventListener('click', ()=>{showPredictions(()=>{logAndDone.log("predictions done!");});});
 var trainbtn1 = document.getElementById("trainbtn1");
@@ -984,29 +1022,7 @@ var trainbtn2 = document.getElementById("trainbtn2");
 trainbtn2.addEventListener('click', ()=>{Scheduler.pause(); trainModel_OnWrongPredictions();});
 var trainbtn3 = document.getElementById("trainbtn3");
 trainbtn3.addEventListener('click', ()=>{Scheduler.pause(); trainModel_OnLowProbability()});
-
-var loadbtn = document.getElementById("loadbtn");
-loadbtn.addEventListener('click', load);
-
-//////////Scheduler Buttons ///////////
-var runbtn = document.getElementById("runbtn");
-runbtn.addEventListener('click', Scheduler.run);
-var pausebtn = document.getElementById("pausebtn");
-pausebtn.addEventListener('click', Scheduler.pause);
-var stopbtn = document.getElementById("stopbtn");
-stopbtn.addEventListener('click', Scheduler.stop);
 /////////////////////////
-var reportbtn = document.getElementById("reportbtn");
-reportbtn.addEventListener('click', report.init);
-var generatebtn = document.getElementById("generatebtn");
-generatebtn.addEventListener('click', generate);
-/////////////////////////
-var initbtn = document.getElementById("initbtn");
-initbtn.addEventListener('click', initialize);
-var savebtn = document.getElementById("savebtn");
-savebtn.addEventListener('click', saveModelVariablesToLocalStorage);
-var restorebtn = document.getElementById("restorebtn");
-restorebtn.addEventListener('click', restoreModelVariablesFromLocalStorage);
 </script>
 
 
