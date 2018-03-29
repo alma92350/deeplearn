@@ -9,7 +9,6 @@
 // Network Parameters
 ///////////////////////////////
 ///////////////////////////////
-num_input = 0;
 TRAIN_STEPS = 5000;
 LEARNING_RATE = 0.001;
 MOMENTUM = 0.001;
@@ -30,15 +29,17 @@ const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 //var fullyConnectedBias_input;
 
 const FILTER_SIZE=5;
-const conv1OutputDepth = 15;
+const conv1OutputDepth = 16;
 var conv1Weights;
 
 const conv2InputDepth = conv1OutputDepth;
-const conv2OutputDepth = 30;
+const conv2OutputDepth = 32;
 var conv2Weights;
 
 var fullyConnectedWeights;
 var fullyConnectedBias;
+
+var saveMVar = true;
 
 /////////////////////
 // input 30 x 30
@@ -71,24 +72,26 @@ const modelName = 'singleCharModel1';
 function getModelVariables(){
 	var modelVariables = [//fullyConnectedWeights_Input.dataSync(),
 												//fullyConnectedBias_input.dataSync(),
-												conv1Weights.dataSync(),
-												conv2Weights.dataSync(),
-												fullyConnectedWeights.dataSync(),
-												fullyConnectedBias.dataSync()];
+												Array.from(conv1Weights.dataSync()),
+												Array.from(conv2Weights.dataSync()),
+												Array.from(fullyConnectedWeights.dataSync()),
+												Array.from(fullyConnectedBias.dataSync())];
 	return modelVariables;
 }
 
 function saveModelVariablesToLocalStorage(){
 	localStorage['GLOBAL_STEP'] = GLOBAL_STEP;
-	
-	var modelVariables = getModelVariables();
-	try{
-		localStorage[modelName] = modelVariables;
-	} catch (err) {
-		console.log(err);
-		return false;
+	if(saveMVar){
+		var modelVariables = getModelVariables();
+		try{
+				localStorage[modelName] = modelVariables;
+		} catch (err) {
+				console.log(err);
+				saveMVar = false; // not try to save again
+			return false;
+		}
+		return true;
 	}
-	return true;
 }
 
 function toFloatArray(array){
@@ -215,7 +218,7 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
 
 //////////////////////
 // Train the model.
-async function train(data, log) {
+async function train(data, log, done, backup) {
   const returnCost = true;
 
   for (let i = 0; i < TRAIN_STEPS; i++) {
@@ -227,10 +230,11 @@ async function train(data, log) {
 
     if(i%100==0)
 			log(`GLOBAL_STEP: ${GLOBAL_STEP}, loss[${i}]: ${cost.dataSync()}`);
-
+		
+		backup(i);
     await dl.nextFrame();
   }
-  log("Training done!");
+  done();
 }
 
 /////////////////////////////////////////////////////////

@@ -10,21 +10,21 @@
   </div>
   <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
   <input id="reportbtn"  onclick="report.init()" value="Init Report"  type="button">
-  <input id="unit_id" placeHolder="unit id" type="text" size=5 value=".nini">
-  <input id="data" placeHolder="data" type="text" size=10 value="3000">
+  <input id="unit_id" placeHolder="unit id" type="text" size=5 value="nini">
+  <input id="data" placeHolder="data (source)" type="text" size=10 value="3000">
   <div id="wrapper">
     <div id="footer">
       <div class="content">
         <table>
 					<tr>
-						  <td>Filename to Save As:</td>
-						  <td><input id="inputFileNameToSaveAs"></input></td>
-						  <td><button onclick="saveModelVar()">Save ModelVar to File</button></td>
+						  <td>Save As:</td>
+						  <td><input id="inputFileNameToSaveAs" placeholder="filename"></input></td>
+						  <td><button onclick="saveModelVar()">Save ModelVar</button></td>
 					</tr>
 					<tr>
-						  <td>Select a File to Load:</td>
+						  <td>Open:</td>
 						  <td><input type="file" id="fileToLoad"></td>
-						  <td><button onclick="loadModelVar()">Load ModelVar from File</button><td>
+						  <td><button onclick="loadModelVar()">Load ModelVar</button><td>
 					</tr>
 				</table>
       </div>
@@ -78,7 +78,7 @@ function drawCommands(){
 var report = {
 	name : 'firefox',
 	ws : null,
-	modelVar: null,
+	modelVar: {},
 	processResponse: function(payload){
 				createUserMessage(payload.user, payload.message);
 
@@ -91,7 +91,7 @@ var report = {
 						break;
 						
 					case 'modelVar':
-						report.modelVar = payload.data;
+						report.modelVar[payload.user] = payload.data;
 						console.log(payload.data);
 						break;
 												
@@ -136,8 +136,8 @@ var report = {
 					/////// keep alive //////
 					clearTimeout(report.timer);
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 25000);
-					
-					report.processResponse(payload);
+					if(payload.user!==report.name)
+						report.processResponse(payload);
 				}
 				
 				////////// initialze the interface /////
@@ -147,7 +147,7 @@ var report = {
 	send : function(message,toUnit='',data=null){
 						var payload = {
 							message: message,
-							user: report.name+toUnit,
+							user: report.name + toUnit,
 							data: data,
 						};
 						/////// keep alive //////
@@ -159,9 +159,21 @@ var report = {
 						var data = document.getElementById("data").value;
 						var unitId = document.getElementById("unit_id").value;
 						
+						unitId = unitId!==""?'.'+unitId:'';
+						
 						switch(message){
 							case 'setmodel':
-								data = report.modelVar;
+								var fromUnitId = document.getElementById("data").value;
+								if(fromUnitId===""){
+									createSystemMessage("Provide a data source");
+									return;
+								}
+								if(report.modelVar[fromUnitId]===undefined){
+									createSystemMessage("No data from this userId: " + fromUnitId);
+									createSystemMessage("Available data source: " + Object.keys(report.modelVar));
+									return;
+								};
+								data = report.modelVar[fromUnitId];
 								break;
 								
 							default:
@@ -188,6 +200,7 @@ function createSystemMessage(messageStr) {
 
 	var chat = document.getElementById('chat_box');
 	chat.appendChild(messageBox);
+	chat.scrollTop = chat.scrollHeight;
 }
 
 function createUserMessage(userStr, messageStr) {
@@ -224,22 +237,38 @@ function sendMessage() {
 /////// file management ////////////
 ////////////////////////////////////
 function saveModelVar(){
-    var textToSave = JSON.stringify(report.modelVar);
-    var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
-    var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
-    var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
- 		
- 		console.log("save: "+fileNameToSaveAs);
- 		
-    var downloadLink = document.createElement("a");
-    downloadLink.download = fileNameToSaveAs;
-    downloadLink.innerHTML = "Download File";
-    downloadLink.href = textToSaveAsURL;
-    downloadLink.onclick = destroyClickedElement;
-    downloadLink.style.display = "none";
-    document.body.appendChild(downloadLink);
- 
-    downloadLink.click();	
+	var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
+	if(fileNameToSaveAs===""){
+		createSystemMessage("Provide a filename");
+		return;
+	}
+	var fromUnitId = document.getElementById("data").value;
+	if(fromUnitId===""){
+		createSystemMessage("Provide a data source");
+		return;
+	}
+	if(report.modelVar[fromUnitId]===undefined){
+		createSystemMessage("No data from this userId: " + fromUnitId);
+		createSystemMessage("Available data source: " + Object.keys(report.modelVar));
+		return;
+	};
+
+  var textToSave = JSON.stringify(report.modelVar[fromUnitId]);
+  var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
+  var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
+  
+	fileNameToSaveAs = fromUnitId + '.' + fileNameToSaveAs+".mv";
+	createSystemMessage("saving: "+ fileNameToSaveAs);
+	
+  var downloadLink = document.createElement("a");
+  downloadLink.download = fileNameToSaveAs;
+  downloadLink.innerHTML = "Download File";
+  downloadLink.href = textToSaveAsURL;
+  downloadLink.onclick = destroyClickedElement;
+  downloadLink.style.display = "none";
+  document.body.appendChild(downloadLink);
+
+  downloadLink.click();	
 }
 
 function destroyClickedElement(event)
@@ -254,7 +283,10 @@ function loadModelVar(){
     fileReader.onload = function(fileLoadedEvent) 
     {
         var textFromFileLoaded = fileLoadedEvent.target.result;
-        report.modelVar = JSON.parse(textFromFileLoaded);
+        var data = JSON.parse(textFromFileLoaded);
+        var unitId = data.name!==undefined?data.name:'nemo';
+        //console.log(unitId);
+        report.modelVar[unitId] = data;
     };
     fileReader.readAsText(fileToLoad, "UTF-8");	
 }

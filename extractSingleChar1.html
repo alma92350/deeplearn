@@ -93,6 +93,11 @@
 // synchronize last predictions varalbe to global step
 // report predictions on not labeled data
 // send automatically data when training done
+// add load files command
+// return error if saving variables not successful
+// fix setmodel: initialize then load variables
+// convert datasync results to Array in get model variable function too
+// backup feature during training
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -369,7 +374,7 @@ img.onload = function() {
 	displayStack();
 	addEventToCanvas();
 	//setLabelList(firstLabelList);
-	
+	report.send('Total files loaded: ' + num_files);
   } else load();
 };
 
@@ -465,7 +470,7 @@ var Scheduler = {
 						};
 						TRAIN_STEPS = 3000;
 						logAndDone.log("scheduler: TRAIN_STEPS: "+TRAIN_STEPS);
-						train(trainingBatch,logAndDone.log);
+						train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
 					} else {
 						logAndDone.log("scheduler: GLOBAL_STEP: "+GLOBAL_STEP);
 					}
@@ -488,24 +493,31 @@ var logAndDone = {
 				//console.log(err);
 				//report.init();
 			}
-		};
-		/////////// Scheduler //////////
-		if(message == "Training done!"){
-			//Scheduler.nextStep();
-			saveModelVariablesToLocalStorage();
-			logAndDone.log("Model variable saved!");
-			report.processCommand2('getmodel');
-			try {
-				showPredictions(()=>{
-										report.processCommand2('getmodel');
-										Scheduler.nextStep();
-									});
-			} catch(err){
-				report.send("Error: could not perform predictions" + err);
-			}
 		}
-	},
+	}
 };
+
+function trainingDone(){
+	if(saveModelVariablesToLocalStorage())
+		logAndDone.log("Training done & Model variable saved!");
+	else
+		logAndDone.log("Training done. Error: while saving variables!");
+	
+	report.processCommand2('getmodel');
+	try {
+		showPredictions(()=>{
+								report.processCommand2('getmodel');
+								Scheduler.nextStep();
+							});
+	} catch(err){
+		report.send("Error: could not perform predictions" + err);
+	}
+};
+
+function trainingBackup(step){
+	if(step%10000==0)
+		report.processCommand2('getmodel');
+}
 
 ///////////////////////////////////////
 /// utility function
@@ -548,7 +560,7 @@ function trainModel_OnLowProbability(){
   	return;
   }
   logAndDone.log("train the model");
-	train(trainingBatch,logAndDone.log);
+	train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
 }
 
 ////////////////////////////////////////
@@ -581,7 +593,7 @@ function trainModel_OnWrongPredictions(){
   }
 
   logAndDone.log("train the model");
-	train(trainingBatch,logAndDone.log);
+	train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
 }
 ///////////////////////////
 function makeTrainingBatch(){
@@ -608,7 +620,7 @@ function trainModel_OnAll(){
   makeTrainingBatch();
 
   logAndDone.log("train the model");
-  train(trainingBatch,logAndDone.log);
+  train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
 }
 
 
@@ -646,7 +658,7 @@ function makePredictionsByBatch(from,num){
 	// create the prediction batch
 	const p = makeBatch(()=>{return true;}, from, num);
 	
-	const probaResults = model(p.xs).dataSync();
+	const probaResults = Array.from(model(p.xs).dataSync());
 	//logAndDone.log("Prediction batch size: " + num);
 	
 	var   predictionProba = [];
@@ -820,6 +832,7 @@ function generate(labels=_LABELS){
 /////////////////////////
 const CommandNames = [
 	're-init',
+	'load',
 	'run',
 	'pause',
 	'next',
@@ -853,6 +866,9 @@ const processCommands = [
 		logAndDone.log(labels);
 		initialize(labels);
 	},
+	function(){
+		load();
+	},
 	Scheduler.run,
 	Scheduler.pause,
 	Scheduler.next,
@@ -876,8 +892,10 @@ const processCommands = [
 	},
 	initializeModelVariables,
 	function(){
-		saveModelVariablesToLocalStorage();
-		report.send('Model variables saved @GLOBAL_STEP: ' + GLOBAL_STEP);
+		if(saveModelVariablesToLocalStorage())
+			report.send('Model variables saved @GLOBAL_STEP: ' + GLOBAL_STEP);
+		else
+			report.send('Error: while saving variables @GLOBAL_STEP: ' + GLOBAL_STEP);
 	},
 	function(){
 		restoreModelVariablesFromLocalStorage();
@@ -891,6 +909,7 @@ const processCommands = [
 	////// get model variables ///////
 	function(){
 		var data = {
+						name: report.name,
 						target: TARGET,
 						labelsUsed: LABELS_USED,
 						data: getModelVariables(),
@@ -904,11 +923,10 @@ const processCommands = [
 	function(data){
 		// load model variables
 		try{
+			initialize(data.labelsUsed);
 			loadModelVariables(data.data);
-			
 			GLOBAL_STEP = data.globalStep;
 			TRAIN_STEPS = data.train_steps;
-			initialize(data.labelsUsed);
 			report.send("Model Variables loaded");
 		} catch (err) {
 			console.log(err);
