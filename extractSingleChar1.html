@@ -566,7 +566,7 @@ function trainModel_OnLowProbability(){
   	logAndDone.log("Provide a higher probability!");
   	return;
   }
-  logAndDone.log("train the model");
+  logAndDone.log("train the model for " + TRAIN_STEPS + " steps");
 	train(trainingBatch,trainingLog,trainingDone);
 }
 
@@ -601,7 +601,7 @@ function trainModel_OnWrongPredictions(){
   	return;
   }
 
-  logAndDone.log("train the model");
+  logAndDone.log("train the model for " + TRAIN_STEPS + " steps");
 	train(trainingBatch,trainingLog,trainingDone);
 }
 ///////////////////////////
@@ -628,7 +628,7 @@ function trainModel_OnAll(){
   logAndDone.log("make training batch");
   makeTrainingBatch();
 
-  logAndDone.log("train the model");
+  logAndDone.log("train the model for " + TRAIN_STEPS + " steps");
   train(trainingBatch,trainingLog,trainingDone);
 }
 
@@ -811,6 +811,7 @@ function reportPredictions(){
 							lessThan90pc: lessThan90pc,
 							in_divPred: in_divPred,
 							unlabeled: unlabeled,
+							
 						};
 }
 
@@ -928,7 +929,8 @@ const processCommands = [
 						labelsUsed: LABELS_USED,
 						data: getModelVariables(),
 						globalStep: GLOBAL_STEP,
-						train_steps: TRAIN_STEPS,
+						trainSteps: TRAIN_STEPS,
+						modelParam: getModelParameters(),
 						lastPredictions: lastPredictions,
 					};
 		report.send("modelVar",data);

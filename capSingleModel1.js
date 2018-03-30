@@ -68,7 +68,23 @@ function initializeModelVariables(){
 
 //initializeModelVariables();
 
+/////////////////////////////////////////
+//////// getters and setters ////////////
+/////////////////////////////////////////
 const modelName = 'singleCharModel1';
+
+function getModelParameters(){
+	var param = {
+		learningRate : LEARNING_RATE,
+		momentum : MOMENTUM,
+		inputImageSize : IMAGE_SIZE,
+		filterSize : FILTER_SIZE,
+		conv1OutputDepth : conv1OutputDepth,
+		conv2OutputDepth : conv2OutputDepth,
+	};
+	return param;
+}
+
 function getModelVariables(){
 	var modelVariables = [//fullyConnectedWeights_Input.dataSync(),
 												//fullyConnectedBias_input.dataSync(),
