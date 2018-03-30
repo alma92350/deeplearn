@@ -29,11 +29,11 @@ const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 //var fullyConnectedBias_input;
 
 const FILTER_SIZE=5;
-const conv1OutputDepth = 16;
+const conv1OutputDepth = 32;
 var conv1Weights;
 
 const conv2InputDepth = conv1OutputDepth;
-const conv2OutputDepth = 32;
+const conv2OutputDepth = 16;
 var conv2Weights;
 
 var fullyConnectedWeights;
