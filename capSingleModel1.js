@@ -218,7 +218,7 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
 
 //////////////////////
 // Train the model.
-async function train(data, log, done, backup) {
+async function train(data, log, done) {
   const returnCost = true;
 
   for (let i = 0; i < TRAIN_STEPS; i++) {
@@ -228,10 +228,8 @@ async function train(data, log, done, backup) {
       return loss(batch.labels, model(batch.xs));
     }, returnCost);
 
-    if(i%100==0)
-			log(`GLOBAL_STEP: ${GLOBAL_STEP}, loss[${i}]: ${cost.dataSync()}`);
+		log(i,`GLOBAL_STEP: ${GLOBAL_STEP}, loss[${i}]: ${cost.dataSync()}`);
 		
-		backup(i);
     await dl.nextFrame();
   }
   done();

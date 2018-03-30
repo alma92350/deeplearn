@@ -98,6 +98,8 @@
 // fix setmodel: initialize then load variables
 // convert datasync results to Array in get model variable function too
 // backup feature during training
+// revert modification on train backup
+// use the training log function to do regular backup
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -470,7 +472,7 @@ var Scheduler = {
 						};
 						TRAIN_STEPS = 3000;
 						logAndDone.log("scheduler: TRAIN_STEPS: "+TRAIN_STEPS);
-						train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
+						train(trainingBatch,trainingLog,trainingDone);
 					} else {
 						logAndDone.log("scheduler: GLOBAL_STEP: "+GLOBAL_STEP);
 					}
@@ -514,9 +516,14 @@ function trainingDone(){
 	}
 };
 
-function trainingBackup(step){
-	if(step%10000==0)
+function trainingLog(step,message){
+	if(step%100==0)
+		logAndDone.log(message);
+		
+	if(step%10000==0){
+		//report.processCommand2('predict');
 		report.processCommand2('getmodel');
+	}
 }
 
 ///////////////////////////////////////
@@ -560,7 +567,7 @@ function trainModel_OnLowProbability(){
   	return;
   }
   logAndDone.log("train the model");
-	train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
+	train(trainingBatch,trainingLog,trainingDone);
 }
 
 ////////////////////////////////////////
@@ -593,7 +600,7 @@ function trainModel_OnWrongPredictions(){
   }
 
   logAndDone.log("train the model");
-	train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
+	train(trainingBatch,trainingLog,trainingDone);
 }
 ///////////////////////////
 function makeTrainingBatch(){
@@ -620,7 +627,7 @@ function trainModel_OnAll(){
   makeTrainingBatch();
 
   logAndDone.log("train the model");
-  train(trainingBatch,logAndDone.log,trainingDone,trainingBackup);
+  train(trainingBatch,trainingLog,trainingDone);
 }
 
 
