@@ -18,6 +18,11 @@
 					<td>Save As:</td>
 					<td><input id="inputFileNameToSaveAs" placeholder="filename" type="text"></td>
 					<td><input onclick="saveModelVar()" type="button" value="Save ModelVar"></td>
+					<td>
+						<input type="checkbox" id="autoSave" name="backup" value="save">
+						<label for="autoSave">Auto Save</label>
+					</td>
+
 			</tr>
 			<tr>
 					<td>Open:</td>
@@ -26,6 +31,7 @@
 					
 			</tr>
 			<tr>
+				<td>Display Model  </td>
 				<td><input onclick="displayModelVarPredictions()" type="button" value="Predictions"></td>
 				<td><input onclick="displayModelVarParameters()" type="button" value="Model Parameters"></td>
 			</tr>
@@ -102,6 +108,10 @@ var report = {
 					case 'modelVar':
 						report.modelVar[payload.user] = payload.data;
 						console.log(payload.data);
+						createSystemMessage("Available data source: " + Object.keys(report.modelVar));
+						var autoSave = document.getElementById('autoSave');
+						if(autoSave.checked)
+							saveModelVar(payload.user);
 						break;
 												
 					default:
@@ -253,29 +263,36 @@ function sendMessage() {
 ////////////////////////////////////
 /////// file management ////////////
 ////////////////////////////////////
-function saveModelVar(){
+function saveModelVar(source){
 	var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
 	createSystemMessage("Available data source: " + Object.keys(report.modelVar));
 	if(fileNameToSaveAs===""){
 		createSystemMessage("Provide a filename");
 		return;
 	}
-	var fromUnitId = document.getElementById("data").value;
+	var fromUnitId = source===undefined?document.getElementById("data").value:source;
 	if(fromUnitId===""){
 		createSystemMessage("Provide a data source");
 		return;
 	}
-	if(report.modelVar[fromUnitId]===undefined){
+	
+	var modvar = report.modelVar[fromUnitId];
+	if(modvar===undefined){
 		createSystemMessage("No data from this userId: " + fromUnitId);
 		createSystemMessage("Available data source: " + Object.keys(report.modelVar));
 		return;
 	};
 
-  var textToSave = JSON.stringify(report.modelVar[fromUnitId]);
+  var textToSave = JSON.stringify(modvar);
   var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
   var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
   
-	fileNameToSaveAs = fromUnitId + '.' + fileNameToSaveAs+".mv";
+  var mp = modvar.modelParam;
+	fileNameToSaveAs = fromUnitId + '.' + fileNameToSaveAs    + "-" +
+																				mp.conv1OutputDepth + "x" + 
+																				mp.conv2OutputDepth + "x" + 
+																				mp.filterSize       + "-" +
+																				Math.floor(modvar.globalStep/1000) +"k.mv";
 	createSystemMessage("saving: "+ fileNameToSaveAs);
 	
   var downloadLink = document.createElement("a");
@@ -305,6 +322,8 @@ function loadModelVar(){
         var unitId = data.name!==undefined?data.name:'nemo';
         //console.log(unitId);
         report.modelVar[unitId] = data;
+        createSystemMessage("File loaded: " + fileToLoad);
+        createSystemMessage("Available data source: " + Object.keys(report.modelVar));
     };
     fileReader.readAsText(fileToLoad, "UTF-8");	
 }
@@ -340,9 +359,24 @@ function displayModelVarPredictions(){
 		alert("No data for this source");
 	}
 	////////// prediction table /////////////////
-	var predResults = "<div>" + modvar.lastPredictions.in_divPred + "</div>";
+	var lp = modvar.lastPredictions;
+	var predInfo = "<div>" + 
+									 "<h2> Prediction Info by " + modvar.name + "</h2>" +
+									 "<p>Global Step: " + lp.globalStep + "<br>" +
+									 "Target: " + lp.target + "<br>" +
+									 "Labels used: " + lp.labelsUsed + "<br>" +
+									 "Total Samples: " + lp.totalSamples + "<br>" +
+									 "Good predictions: " + lp.goodPredictions + "<br>" +
+									 "Accuracy: " + Math.floor(100* parseInt(lp.goodPredictions)/parseInt(lp.totalSamples)) + "%<br>" +
+									 "Less than 50% Probability: " + lp.lessThan50pc + "<br>" +
+									 "Less than 90% Probability: " + lp.lessThan90pc +
+								 "</p></div>";
 	
-	var ulTable = '<table> <col width="80"><col width="80"><col width="80"><col width="80"><col width="80">';
+	////////////////
+	var predResults = "<div>" + lp.in_divPred + "</div>";
+	
+	////////////////
+	var ulTable = '<table border="1"> <col width="80"><col width="80"><col width="80"><col width="80"><col width="80">';
 	var unlabeled = modvar.lastPredictions.unlabeled;
 	var idx=0;
 	while(idx<unlabeled.length){
@@ -358,7 +392,7 @@ function displayModelVarPredictions(){
 	}
 	ulTable += "</table>";
 	
-	dport.innerHTML = predResults + "<br>" + ulTable;
+	dport.innerHTML = predInfo + predResults + "<br>" + ulTable;
 }
 
 </script>
