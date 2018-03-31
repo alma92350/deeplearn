@@ -12,26 +12,35 @@
   <input id="reportbtn"  onclick="report.init()" value="Init Report"  type="button">
   <input id="unit_id" placeHolder="unit id" type="text" size=5 value="nini">
   <input id="data" placeHolder="data (source)" type="text" size=10 value="3000">
-  <div id="wrapper">
-    <div id="footer">
-      <div class="content">
-        <table>
-					<tr>
-						  <td>Save As:</td>
-						  <td><input id="inputFileNameToSaveAs" placeholder="filename"></input></td>
-						  <td><button onclick="saveModelVar()">Save ModelVar</button></td>
-					</tr>
-					<tr>
-						  <td>Open:</td>
-						  <td><input type="file" id="fileToLoad"></td>
-						  <td><button onclick="loadModelVar()">Load ModelVar</button><td>
-					</tr>
-				</table>
-      </div>
-    </div>
-    
-    <div id="chat_box" class="content"></div>
+  <div id="file_manager">
+		<table>
+			<tr>
+					<td>Save As:</td>
+					<td><input id="inputFileNameToSaveAs" placeholder="filename" type="text"></td>
+					<td><input onclick="saveModelVar()" type="button" value="Save ModelVar"></td>
+			</tr>
+			<tr>
+					<td>Open:</td>
+					<td><input type="file" id="fileToLoad"></td>
+					<td><input onclick="loadModelVar()" type="button" value="Load ModelVar"><td>
+					
+			</tr>
+			<tr>
+				<td><input onclick="displayModelVarPredictions()" type="button" value="Predictions"></td>
+				<td><input onclick="displayModelVarParameters()" type="button" value="Model Parameters"></td>
+			</tr>
+		</table>
   </div>
+      
+  <div id="wrapper">
+  	<div id="chat_box" class="content"></div>
+    
+		<div id="footer">
+		
+<div id="displayPort" class="content"></div>
+		</div>
+  </div>
+  
 
 <script>
 /////////////////////////
@@ -103,6 +112,14 @@ var report = {
 				// wsUri = "wss://example.com/ws/websoket";
 				var wsUri = document.getElementById('webSocket').value;
 				var wsUriLocalStore = localStorage['wsUri'];
+				
+				var hashes = window.location.hash.substr(1).split('#');
+				if(hashes.length){
+					wsUri = "wss://" + hashes[0];
+					report.name = hashes[1];
+					if(report.name===undefined)
+						report.name = 'firefox';
+				}
 				if(wsUri=="" && wsUriLocalStore=="") {
 					console.log("report not initialized!!");
 					return;
@@ -238,6 +255,7 @@ function sendMessage() {
 ////////////////////////////////////
 function saveModelVar(){
 	var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
+	createSystemMessage("Available data source: " + Object.keys(report.modelVar));
 	if(fileNameToSaveAs===""){
 		createSystemMessage("Provide a filename");
 		return;
@@ -291,7 +309,60 @@ function loadModelVar(){
     fileReader.readAsText(fileToLoad, "UTF-8");	
 }
 
+////////////////////////////////////////
+///////// display modelVar /////////////
+////////////////////////////////////////
+function displayModelVarParameters(){
+	var dport = document.getElementById("displayPort");
+	var source = document.getElementById("data").value;
+	if(source===""){
+		alert("Provide source information");
+	}
+	console.log(source);
+	var modvar = report.modelVar[source];
+	
+	if(modvar===undefined){
+		alert("No data for this source");
+	}
+	
+}
+
+function displayModelVarPredictions(){
+	var dport = document.getElementById("displayPort");
+	var source = document.getElementById("data").value;
+	if(source===""){
+		alert("Provide source information");
+	}
+	console.log(source);
+	var modvar = report.modelVar[source];
+	
+	if(modvar===undefined){
+		alert("No data for this source");
+	}
+	////////// prediction table /////////////////
+	var predResults = "<div>" + modvar.lastPredictions.in_divPred + "</div>";
+	
+	var ulTable = '<table> <col width="80"><col width="80"><col width="80"><col width="80"><col width="80">';
+	var unlabeled = modvar.lastPredictions.unlabeled;
+	var idx=0;
+	while(idx<unlabeled.length){
+		var row1 = "<tr>";
+		var row2 = "<tr>";
+		
+		row1 += "<td colspan='5' align='center'><img src='" +unlabeled[idx].src + "'></td>";
+		for(var col=0;col<5;col++,idx++){
+			
+			row2 += '<td align="center"><label> ' + unlabeled[idx].pred +': '+ unlabeled[idx].proba +'%</label></td>';
+		}
+		ulTable += row1 + '</tr>' + row2 + '</tr>';
+	}
+	ulTable += "</table>";
+	
+	dport.innerHTML = predResults + "<br>" + ulTable;
+}
+
 </script>
+
 <style type="text/css">
 	* {
 	  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
@@ -302,7 +373,11 @@ function loadModelVar(){
 	html, body, #wrapper {
    margin: 0;
    padding: 0;
-   height: 400px;
+  }
+  
+  #file_manager {
+    color: #fff;
+    background-color: #2980b9;
   }
 
 	#wrapper {
@@ -315,13 +390,19 @@ function loadModelVar(){
     overflow: auto;
     padding-bottom: 200px;
   }
+  
+   #displayPort {
+		margin: 10;
+		padding:10;
+    color: #fff;
+    background-color: #2980b9;
+  }
 
   #footer {
     box-sizing: border-box;
-    position: fixed;
     bottom: 0;
-    height: 90px;
-    width: 100%;
+    position: relative;
+    width: 80%;
     background-color: #2980b9;
   }
 
@@ -386,21 +467,14 @@ function loadModelVar(){
   @media(max-width: 780px) {
     #footer { height: 191px; }
     #chat_box { padding-bottom: 191px; }
+    #displayPort { padding-bottom: 191px; }
 
-    #user { width: 100%; }
-    #message { width: 80%; }
   }
 
   @media(max-width: 400px) {
     #footer { height: 235px; }
     #chat_box { padding-bottom: 235px; }
-
-    #message { width: 100%; }
-    #send_btn {
-      position: relative;
-      margin-top: 3px;
-      width: 100%;
-    }
+    #displayPort { padding-bottom: 235px; }
   }
 </style>
 </body>

@@ -103,7 +103,8 @@
 // more info on the model
 // do not show predictions after training
 // number in prediction batch + catch error
-// correct next Training batch: case target length == 0 
+// correct next Training batch: case target length == 0
+// use hashes to provide ws Uri and report name
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -990,6 +991,13 @@ var report = {
 				// wsUri = "wss://example.com/ws/websoket";
 				var wsUri = document.getElementById('webSocket').value;
 				var wsUriLocalStore = localStorage['wsUri'];
+				
+				var hashes = window.location.hash.substr(1).split('#');
+				var wsUri = hashes[0]===undefined?document.getElementById('webSocket').value:"wss://" + hashes[0];
+				
+				report.name = hashes[1]===undefined?report.name:hashes[1];
+				localStorage['reportName'] = report.name;
+				
 				if(wsUri==="" && wsUriLocalStore===undefined) {
 					console.log("report not initialized!!");
 					return;
