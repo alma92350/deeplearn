@@ -42,8 +42,8 @@
   	<div id="chat_box" class="content"></div>
     
 		<div id="footer">
-		
-<div id="displayPort" class="content"></div>
+			<div id="displayParam" class="content"></div>
+			<div id="displayPort" class="content"></div>
 		</div>
   </div>
   
@@ -203,6 +203,29 @@ var report = {
 								data = report.modelVar[fromUnitId];
 								break;
 								
+							case 'setparam':
+								
+								try{
+											data = {};
+											data.name = document.getElementById('p_name').value;
+											data.globalStep = parseInt(document.getElementById('p_gstep').value);
+											data.learningRate = parseFloat(document.getElementById('p_lrate').value);
+											data.momentum = parseFloat(document.getElementById('p_momentum').value);
+											
+											data.filterSize = parseInt(document.getElementById('p_filter').value);
+											data.conv1OutputDepth = parseInt(document.getElementById('p_conv1').value);
+											data.conv2OutputDepth = parseInt(document.getElementById('p_conv2').value);
+											data.outLayerSize = 7;
+											
+											data.target = document.getElementById('p_target').value;
+											data.lbused = document.getElementById('p_lbused').value.split(',');
+											console.log(data);
+											createSystemMessage("Model Parameters prepares");
+								} catch(err){
+									createSystemMessage("Cannot prepare Model Parameters: " + err);
+								}
+								break;
+								
 							default:
 								break;
 						}
@@ -322,7 +345,7 @@ function loadModelVar(){
         var unitId = data.name!==undefined?data.name:'nemo';
         //console.log(unitId);
         report.modelVar[unitId] = data;
-        createSystemMessage("File loaded: " + fileToLoad);
+        createSystemMessage("File loaded");
         createSystemMessage("Available data source: " + Object.keys(report.modelVar));
     };
     fileReader.readAsText(fileToLoad, "UTF-8");	
@@ -332,7 +355,7 @@ function loadModelVar(){
 ///////// display modelVar /////////////
 ////////////////////////////////////////
 function displayModelVarParameters(){
-	var dport = document.getElementById("displayPort");
+	var dport = document.getElementById("displayParam");
 	var source = document.getElementById("data").value;
 	if(source===""){
 		alert("Provide source information");
@@ -344,6 +367,46 @@ function displayModelVarParameters(){
 		alert("No data for this source");
 	}
 	
+	var mp = modvar.modelParam;
+	var param = '<div>' +
+								'<h2> Model Parameters by ' + modvar.name + '</h2>' +
+								'<p>Global Step: ' + modvar.globalStep + '<br>' +
+								 'Input image size: ' + mp.inputImageSize + '<br>' +
+								 'Target: ' + modvar.target + '<br>' +
+								 'Labels used: ' + modvar.labelsUsed + '<br>' +
+								 'Conv 1 output depth: ' + mp.conv1OutputDepth + '<br>' +
+								 'Conv 2 output depth: ' + mp.conv2OutputDepth + '<br>' +
+								 'Filter size: ' + mp.filterSize + '<br>' +
+								 'Learning rate: ' + mp.learningRate + '<br>' +
+								 'Momentum: ' + mp.momentum + '</p>' +
+							'</div>';
+	
+	//<input id="unit_id" type="text" size=5 value="nini">
+	
+		var editParam = '<div><table border="1">' +
+								 '<tr><td><h2> Model Parameters: </td><td><input id="p_name" type="text" size=20 value="' +
+								 modvar.name + '"></h2></td></tr>' +
+								 '<tr><td>Global Step: </td><td><input id="p_gstep" type="text" size=20 value="' + 
+								 modvar.globalStep + '"></td></tr>' +
+								 '<tr><td>Input image size: </td><td>' + mp.inputImageSize + '</td></tr>' +
+								 '<tr><td>Target: </td><td><input id="p_target" type="text" size=20 value="' + 
+								 modvar.target + '"></td></tr>' +
+								 '<tr><td>Labels used: </td><td><input id="p_lbused" type="text" size=20 value="' + 
+								 modvar.labelsUsed.join(', ') + '"></td></tr>' +
+								 '<tr><td>Conv 1 output depth: </td><td><input id="p_conv1" type="text" size=20 value="' + 
+								 mp.conv1OutputDepth + '"></td></tr>' +
+								 '<tr><td>Conv 2 output depth: </td><td><input id="p_conv2" type="text" size=20 value="' + 
+								 mp.conv2OutputDepth + '"></td></tr>' +
+								 '<tr><td>Filter size: </td><td><input id="p_filter" type="text" size=20 value="' + 
+								 mp.filterSize + '"></td></tr>' +
+								 '<tr><td>Learning rate: </td><td><input id="p_lrate" type="text" size=20 value="' + 
+								 mp.learningRate + '"></td></tr>' +
+								 '<tr><td>Momentum: </td><td><input id="p_momentum" type="text" size=20 value="' + 
+								 mp.momentum + '"></td></tr>' +
+								 '<tr><td>'+ '</td><td>' + '</td></tr>'
+							'</div></table>';
+	
+	dport.innerHTML = editParam;
 }
 
 function displayModelVarPredictions(){
@@ -425,7 +488,7 @@ function displayModelVarPredictions(){
     padding-bottom: 200px;
   }
   
-   #displayPort {
+   #displayPort,#displayParam {
 		margin: 10;
 		padding:10;
     color: #fff;
@@ -501,14 +564,14 @@ function displayModelVarPredictions(){
   @media(max-width: 780px) {
     #footer { height: 191px; }
     #chat_box { padding-bottom: 191px; }
-    #displayPort { padding-bottom: 191px; }
+    #displayPort,#displayParam { padding-bottom: 191px; }
 
   }
 
   @media(max-width: 400px) {
     #footer { height: 235px; }
     #chat_box { padding-bottom: 235px; }
-    #displayPort { padding-bottom: 235px; }
+    #displayPort,#displayParam { padding-bottom: 235px; }
   }
 </style>
 </body>
