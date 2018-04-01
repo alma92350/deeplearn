@@ -13,8 +13,6 @@
   <input id="unit_id" placeHolder="unit id" type="text" size=5 value="nini">
   <input id="data" placeHolder="data" type="text" size=10 value="3000">
   <select id="source">
-  	<option value="nini">nini</option>
-  	<option value="rv511">rv511</option>
   </select>
   <div id="file_manager">
 		<table>
@@ -359,6 +357,12 @@ function loadModelVar(){
         var data = JSON.parse(textFromFileLoaded);
         var unitId = data.name!==undefined?data.name:'nemo';
         //console.log(unitId);
+        // remove any spaces in labelsUsed
+        var dl = data.labelsUsed;
+        for(var i=0;i<dl.length;i++){
+        	dl[i] = dl[i].replace(/\s/g, '');
+        }
+        
         report.modelVar[unitId] = data;
         createSystemMessage("File loaded");
         createSystemMessage("Available data source: " + Object.keys(report.modelVar));
