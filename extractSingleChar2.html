@@ -810,7 +810,7 @@ function reportPredictions(){
 	}
 	lastPredictions = {
 							globalStep : GLOBAL_STEP,
-							train_steps : TRAIN_STEPS,
+							trainSteps : TRAIN_STEPS,
 							target: TARGET,
 							labelsUsed: LABELS_USED,
 							totalSamples : totalSamples,
@@ -884,14 +884,14 @@ const CommandNames = [
 var rxBuffer=null;
 
 const processCommands = [
-	function(param){
+	function(data){
 		///// set model parameters (and initialize variables)
 		try{
-			console.log('setparam function: ' + param);
-			initializeModel(param);
+			console.log('setparam function: ' + data);
+			initializeModel(data.modelParam);
 			report.send('Model parameters initialized');
-			initialize(param.lbused,param.target);
-			report.send('System and model variable initialized');
+			initialize(data.labelsUsed,data.target);
+			report.send("Labels and Target initialized");
 		} catch(err){
 			report.send('Error: Model parameters could not be initialized:' + err);
 		}
@@ -956,8 +956,6 @@ const processCommands = [
 						target: TARGET,
 						labelsUsed: LABELS_USED,
 						data: getModelVariables(),
-						globalStep: GLOBAL_STEP,
-						trainSteps: TRAIN_STEPS,
 						modelParam: getModelParameters(),
 						lastPredictions: lastPredictions,
 					};
@@ -967,15 +965,17 @@ const processCommands = [
 	function(data){
 		// load model variables
 		try{
-			initialize(data.labelsUsed);
+			console.log('setparam function: ' + data);
+			initializeModel(data.modelParam);
+			report.send('Model parameters initialized');
+			initialize(data.labelsUsed,data.target);
+			report.send("Labels and Target initialized");
 			loadModelVariables(data.data);
-			GLOBAL_STEP = data.globalStep;
-			TRAIN_STEPS = data.train_steps;
 			report.send("Model Variables loaded");
 		} catch (err) {
 			console.log(err);
 			report.send("Error: model Variables not Set");
-			report.send(err);
+			//report.send(err.TypeError.message);
 			return;
 		}		
 	},

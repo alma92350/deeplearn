@@ -17,7 +17,7 @@ MOMENTUM = 0.001;
 BATCH_SIZE = 10;
 var	LABELS_SIZE = 2; // 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 var GLOBAL_STEP = 0;
-const IMAGE_SIZE = 30;
+var IMAGE_SIZE = 30;
 var OUT_LAYER_SIZE = 7; // computed or look at the layer 2 shape layer2.print()
 ////////////////////////////////
 
@@ -47,23 +47,6 @@ var saveMVar = true;// save to localStorage by default. False if store attempt f
 // hidden fully conn 16 x 16
 // max pool --> 8 x 8
 // max pool -->> 4 x 4
-function initializeModel(param){
-	if(param!==undefined){
-		GLOBAL_STEP = param.globalStep;
-		TRAIN_STEPS = param.trainSteps;
-		LEARNING_RATE = param.learningRate;
-		MOMENTUM = param.momentum;
-		FILTER_SIZE = param.filterSize;
-		conv1OutputDepth = param.conv1OutputDepth;
-		conv2InputDepth = conv1OutputDepth;
-		conv2OutputDepth = param.conv2OutputDepth;
-		OUT_LAYER_SIZE = param.outLayerSize;
-		console.log('param: ' + param);
-	} else {
-		console.log('model initialization param: undefined'); 
-	}
-	//initializeModelVariables();
-}
 
 function initializeModelVariables(){
 
@@ -92,14 +75,36 @@ function initializeModelVariables(){
 /////////////////////////////////////////
 const modelName = 'singleCharModel1';
 
+function initializeModel(param){
+	if(param!==undefined){
+		GLOBAL_STEP = param.globalStep;
+		TRAIN_STEPS = param.trainSteps;
+		LEARNING_RATE = param.learningRate;
+		MOMENTUM = param.momentum;
+		IMAGE_SIZE = param.inputImageSize;
+		FILTER_SIZE = param.filterSize;
+		conv1OutputDepth = param.conv1OutputDepth;
+		conv2InputDepth = conv1OutputDepth;
+		conv2OutputDepth = param.conv2OutputDepth;
+		OUT_LAYER_SIZE = param.outLayerSize;
+		console.log('param: ' + param);
+	} else {
+		console.log('model initialization param: undefined'); 
+	}
+	//initializeModelVariables();
+}
+
 function getModelParameters(){
 	var param = {
+		globalStep : GLOBAL_STEP,
+		trainSteps : TRAIN_STEPS,
 		learningRate : LEARNING_RATE,
 		momentum : MOMENTUM,
 		inputImageSize : IMAGE_SIZE,
 		filterSize : FILTER_SIZE,
 		conv1OutputDepth : conv1OutputDepth,
 		conv2OutputDepth : conv2OutputDepth,
+		outLayerSize : OUT_LAYER_SIZE,
 	};
 	return param;
 }

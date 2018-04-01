@@ -95,7 +95,12 @@ var report = {
 	ws : null,
 	modelVar: {},
 	processResponse: function(payload){
-				createUserMessage(payload.user, payload.message);
+				try{
+					var error = payload.message.toLowerCase().indexOf('error')>=0;
+				} catch(err){
+					return;
+				}
+				createUserMessage(payload.user, payload.message,error);
 
 				var chat = document.getElementById('chat_box');
 				chat.scrollTop = chat.scrollHeight;
@@ -207,7 +212,7 @@ var report = {
 								
 								try{
 											data = makeModelParameters();
-											createSystemMessage("Model Parameters prepares");
+											createSystemMessage("Model Parameters prepared");
 								} catch(err){
 									createSystemMessage("Cannot prepare Model Parameters: " + err);
 								}
@@ -240,7 +245,7 @@ function createSystemMessage(messageStr) {
 	chat.scrollTop = chat.scrollHeight;
 }
 
-function createUserMessage(userStr, messageStr) {
+function createUserMessage(userStr, messageStr,red) {
 	user = document.createTextNode(userStr + ': ');
 
 	var userBox = document.createElement('span');
@@ -252,6 +257,8 @@ function createUserMessage(userStr, messageStr) {
 	var messageBox = document.createElement('p');
 	messageBox.appendChild(userBox);
 	messageBox.appendChild(message);
+	
+	if(red) messageBox.setAttribute("style","color:red");
 
 	var chat = document.getElementById('chat_box');
 	chat.appendChild(messageBox);
@@ -315,7 +322,7 @@ function saveModelVar(source){
 																				mp.conv1OutputDepth + "x" + 
 																				mp.conv2OutputDepth + "x" + 
 																				mp.filterSize       + "-" +
-																				Math.floor(modvar.globalStep/1000) +"k.mv";
+																				Math.floor(mp.globalStep/1000) +"k.mv";
 	
 	saveTextToFile(fileNameToSaveAs,textToSave);
 }
@@ -347,29 +354,12 @@ function loadModelVar(){
 ////////////////////////////////////////
 function saveModelParameters(){
 	var mp = makeModelParameters();
-	
-	// convert mp into model var format
-	var mv = {
-		name: mp.name,
-		globalStep: mp.globalStep,
-		labelsUsed: mp.lbused,
-		modelParam: {
-					conv1OutputDepth: mp.conv1OutputDepth,
-					conv2OutputDepth: mp.conv2OutputDepth,
-					filterSize      : mp.filterSize,
-					inputImageSize  : 30,
-					learningRate    : mp.learningRate,
-					momentum        : mp.momentum,
-		}, 
-		target    : mp.target, 
-		trainSteps: mp.trainSteps,
-	};
-	
-	var textToSave = JSON.stringify(mv);
+		
+	var textToSave = JSON.stringify(mp);
 	var fileNameToSaveAs = 	mp.name + '-' + 
-													mp.conv1OutputDepth + "x" +
-													mp.conv2OutputDepth + "x" +
-													mp.filterSize + '.mp';
+													mp.modelParam.conv1OutputDepth + "x" +
+													mp.modelParam.conv2OutputDepth + "x" +
+													mp.modelParam.filterSize + '.mp';
 	
 	saveTextToFile(fileNameToSaveAs,textToSave);
 }
@@ -379,20 +369,24 @@ function sendModelParameters(){
 }
 
 function makeModelParameters(){
-	var data = {};
+	var data = {modelParam:{}};
+	
+	// convert into model var format
 	data.name = document.getElementById('p_name').value;
-	data.globalStep = parseInt(document.getElementById('p_gstep').value);
-	data.trainSteps = parseInt(document.getElementById('p_tsteps').value);
-	data.learningRate = parseFloat(document.getElementById('p_lrate').value);
-	data.momentum = parseFloat(document.getElementById('p_momentum').value);
-	
-	data.filterSize = parseInt(document.getElementById('p_filter').value);
-	data.conv1OutputDepth = parseInt(document.getElementById('p_conv1').value);
-	data.conv2OutputDepth = parseInt(document.getElementById('p_conv2').value);
-	data.outLayerSize = 7;
-	
 	data.target = document.getElementById('p_target').value;
-	data.lbused = document.getElementById('p_lbused').value.split(',');
+	data.labelsUsed = document.getElementById('p_lbused').value.split(',');
+	console.log(data);
+	data.modelParam.globalStep = parseInt(document.getElementById('p_gstep').value);
+	data.modelParam.trainSteps = parseInt(document.getElementById('p_tsteps').value);
+	data.modelParam.conv1OutputDepth = parseInt(document.getElementById('p_conv1').value);
+	data.modelParam.conv2OutputDepth = parseInt(document.getElementById('p_conv2').value);
+	console.log(data);
+	data.modelParam.filterSize = parseInt(document.getElementById('p_filter').value);
+	data.modelParam.inputImageSize  = 30;
+	data.modelParam.learningRate = parseFloat(document.getElementById('p_lrate').value);
+	data.modelParam.momentum = parseFloat(document.getElementById('p_momentum').value);
+	data.modelParam.outLayerSize = 7;
+	
 	console.log(data);
 	
 	return data;
@@ -431,9 +425,9 @@ function displayModelVarParameters(){
 								 '<tr><td><h2> Model Parameters: </td><td><input id="p_name" type="text" size=20 value="' +
 								 modvar.name + '"></h2></td></tr>' +
 								 '<tr><td>Global Step: </td><td><input id="p_gstep" type="text" size=20 value="' + 
-								 modvar.globalStep + '"></td></tr>' +
+								 mp.globalStep + '"></td></tr>' +
 								 '<tr><td>Train Steps: </td><td><input id="p_tsteps" type="text" size=20 value="' + 
-								 modvar.trainSteps + '"></td></tr>' +
+								 mp.trainSteps + '"></td></tr>' +
 								 '<tr><td>Input image size: </td><td>' + mp.inputImageSize + '</td></tr>' +
 								 '<tr><td>Target: </td><td><input id="p_target" type="text" size=20 value="' + 
 								 modvar.target + '"></td></tr>' +
