@@ -392,7 +392,7 @@ function makeModelParameters(){
 	// convert into model var format
 	data.name = document.getElementById('p_name').value;
 	data.target = document.getElementById('p_target').value;
-	data.labelsUsed = document.getElementById('p_lbused').value.replace(' ','').split(',');
+	data.labelsUsed = document.getElementById('p_lbused').value.replace(/\s/g, '').split(',');
 	console.log(data);
 	data.modelParam.globalStep = parseInt(document.getElementById('p_gstep').value);
 	data.modelParam.trainSteps = parseInt(document.getElementById('p_tsteps').value);
@@ -450,7 +450,7 @@ function displayModelVarParameters(){
 								 '<tr><td>Target: </td><td><input id="p_target" type="text" size=20 value="' + 
 								 modvar.target + '"></td></tr>' +
 								 '<tr><td>Labels used: </td><td><input id="p_lbused" type="text" size=20 value="' + 
-								 modvar.labelsUsed.join(', ') + '"></td></tr>' +
+								 modvar.labelsUsed + '"></td></tr>' +
 								 '<tr><td>Conv 1 output depth: </td><td><input id="p_conv1" type="text" size=20 value="' + 
 								 mp.conv1OutputDepth + '"></td></tr>' +
 								 '<tr><td>Conv 2 output depth: </td><td><input id="p_conv2" type="text" size=20 value="' + 
