@@ -206,20 +206,7 @@ var report = {
 							case 'setparam':
 								
 								try{
-											data = {};
-											data.name = document.getElementById('p_name').value;
-											data.globalStep = parseInt(document.getElementById('p_gstep').value);
-											data.learningRate = parseFloat(document.getElementById('p_lrate').value);
-											data.momentum = parseFloat(document.getElementById('p_momentum').value);
-											
-											data.filterSize = parseInt(document.getElementById('p_filter').value);
-											data.conv1OutputDepth = parseInt(document.getElementById('p_conv1').value);
-											data.conv2OutputDepth = parseInt(document.getElementById('p_conv2').value);
-											data.outLayerSize = 7;
-											
-											data.target = document.getElementById('p_target').value;
-											data.lbused = document.getElementById('p_lbused').value.split(',');
-											console.log(data);
+											data = makeModelParameters();
 											createSystemMessage("Model Parameters prepares");
 								} catch(err){
 									createSystemMessage("Cannot prepare Model Parameters: " + err);
@@ -286,6 +273,21 @@ function sendMessage() {
 ////////////////////////////////////
 /////// file management ////////////
 ////////////////////////////////////
+function saveTextToFile(fileNameToSaveAs,textToSave){
+	createSystemMessage("saving: "+ fileNameToSaveAs);
+  var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
+  var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);	
+  var downloadLink = document.createElement("a");
+  downloadLink.download = fileNameToSaveAs;
+  downloadLink.innerHTML = "Download File";
+  downloadLink.href = textToSaveAsURL;
+  downloadLink.onclick = destroyClickedElement;
+  downloadLink.style.display = "none";
+  document.body.appendChild(downloadLink);
+
+  downloadLink.click();
+}
+
 function saveModelVar(source){
 	var fileNameToSaveAs = document.getElementById("inputFileNameToSaveAs").value;
 	createSystemMessage("Available data source: " + Object.keys(report.modelVar));
@@ -307,8 +309,6 @@ function saveModelVar(source){
 	};
 
   var textToSave = JSON.stringify(modvar);
-  var textToSaveAsBlob = new Blob([textToSave], {type:"text/plain"});
-  var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
   
   var mp = modvar.modelParam;
 	fileNameToSaveAs = fromUnitId + '.' + fileNameToSaveAs    + "-" +
@@ -316,17 +316,8 @@ function saveModelVar(source){
 																				mp.conv2OutputDepth + "x" + 
 																				mp.filterSize       + "-" +
 																				Math.floor(modvar.globalStep/1000) +"k.mv";
-	createSystemMessage("saving: "+ fileNameToSaveAs);
 	
-  var downloadLink = document.createElement("a");
-  downloadLink.download = fileNameToSaveAs;
-  downloadLink.innerHTML = "Download File";
-  downloadLink.href = textToSaveAsURL;
-  downloadLink.onclick = destroyClickedElement;
-  downloadLink.style.display = "none";
-  document.body.appendChild(downloadLink);
-
-  downloadLink.click();	
+	saveTextToFile(fileNameToSaveAs,textToSave);
 }
 
 function destroyClickedElement(event)
@@ -354,6 +345,59 @@ function loadModelVar(){
 ////////////////////////////////////////
 ///////// display modelVar /////////////
 ////////////////////////////////////////
+function saveModelParameters(){
+	var mp = makeModelParameters();
+	
+	// convert mp into model var format
+	var mv = {
+		name: mp.name,
+		globalStep: mp.globalStep,
+		labelsUsed: mp.lbused,
+		modelParam: {
+					conv1OutputDepth: mp.conv1OutputDepth,
+					conv2OutputDepth: mp.conv2OutputDepth,
+					filterSize      : mp.filterSize,
+					inputImageSize  : 30,
+					learningRate    : mp.learningRate,
+					momentum        : mp.momentum,
+		}, 
+		target    : mp.target, 
+		trainSteps: mp.trainSteps,
+	};
+	
+	var textToSave = JSON.stringify(mv);
+	var fileNameToSaveAs = 	mp.name + '-' + 
+													mp.conv1OutputDepth + "x" +
+													mp.conv2OutputDepth + "x" +
+													mp.filterSize + '.mp';
+	
+	saveTextToFile(fileNameToSaveAs,textToSave);
+}
+
+function sendModelParameters(){
+	report.sendTo('setparam');
+}
+
+function makeModelParameters(){
+	var data = {};
+	data.name = document.getElementById('p_name').value;
+	data.globalStep = parseInt(document.getElementById('p_gstep').value);
+	data.trainSteps = parseInt(document.getElementById('p_tsteps').value);
+	data.learningRate = parseFloat(document.getElementById('p_lrate').value);
+	data.momentum = parseFloat(document.getElementById('p_momentum').value);
+	
+	data.filterSize = parseInt(document.getElementById('p_filter').value);
+	data.conv1OutputDepth = parseInt(document.getElementById('p_conv1').value);
+	data.conv2OutputDepth = parseInt(document.getElementById('p_conv2').value);
+	data.outLayerSize = 7;
+	
+	data.target = document.getElementById('p_target').value;
+	data.lbused = document.getElementById('p_lbused').value.split(',');
+	console.log(data);
+	
+	return data;
+}
+
 function displayModelVarParameters(){
 	var dport = document.getElementById("displayParam");
 	var source = document.getElementById("data").value;
@@ -388,6 +432,8 @@ function displayModelVarParameters(){
 								 modvar.name + '"></h2></td></tr>' +
 								 '<tr><td>Global Step: </td><td><input id="p_gstep" type="text" size=20 value="' + 
 								 modvar.globalStep + '"></td></tr>' +
+								 '<tr><td>Train Steps: </td><td><input id="p_tsteps" type="text" size=20 value="' + 
+								 modvar.trainSteps + '"></td></tr>' +
 								 '<tr><td>Input image size: </td><td>' + mp.inputImageSize + '</td></tr>' +
 								 '<tr><td>Target: </td><td><input id="p_target" type="text" size=20 value="' + 
 								 modvar.target + '"></td></tr>' +
@@ -403,7 +449,8 @@ function displayModelVarParameters(){
 								 mp.learningRate + '"></td></tr>' +
 								 '<tr><td>Momentum: </td><td><input id="p_momentum" type="text" size=20 value="' + 
 								 mp.momentum + '"></td></tr>' +
-								 '<tr><td>'+ '</td><td>' + '</td></tr>'
+								 '<tr><td><input onclick="saveModelParameters()" type="button" value="Save Model"></td>' + 
+								 '<td><input onclick="sendModelParameters()" type="button" value="Set Parameters"></td></tr>' + 
 							'</div></table>';
 	
 	dport.innerHTML = editParam;

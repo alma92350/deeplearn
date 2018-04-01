@@ -50,6 +50,7 @@ var saveMVar = true;// save to localStorage by default. False if store attempt f
 function initializeModel(param){
 	if(param!==undefined){
 		GLOBAL_STEP = param.globalStep;
+		TRAIN_STEPS = param.trainSteps;
 		LEARNING_RATE = param.learningRate;
 		MOMENTUM = param.momentum;
 		FILTER_SIZE = param.filterSize;
