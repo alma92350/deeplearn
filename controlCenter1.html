@@ -11,7 +11,11 @@
   <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
   <input id="reportbtn"  onclick="report.init()" value="Init Report"  type="button">
   <input id="unit_id" placeHolder="unit id" type="text" size=5 value="nini">
-  <input id="data" placeHolder="data (source)" type="text" size=10 value="3000">
+  <input id="data" placeHolder="data" type="text" size=10 value="3000">
+  <select id="source">
+  	<option value="nini">nini</option>
+  	<option value="rv511">rv511</option>
+  </select>
   <div id="file_manager">
 		<table>
 			<tr>
@@ -276,6 +280,19 @@ function sendMessage() {
 	report.send(message.value);
 	message.value = "";
 }
+////////////////////////////////////
+//////// mod var sources ///////////
+////////////////////////////////////
+function addSource(source){
+	var source = document.getElementById("source");
+	
+}
+
+function getSource(){
+	var source = document.getElementById("source").options;
+	if(
+	document.getElementById("source").options.selectedIndex
+}
 
 ////////////////////////////////////
 /////// file management ////////////
@@ -352,6 +369,7 @@ function loadModelVar(){
 ////////////////////////////////////////
 ///////// display modelVar /////////////
 ////////////////////////////////////////
+
 function saveModelParameters(){
 	var mp = makeModelParameters();
 		
@@ -374,7 +392,7 @@ function makeModelParameters(){
 	// convert into model var format
 	data.name = document.getElementById('p_name').value;
 	data.target = document.getElementById('p_target').value;
-	data.labelsUsed = document.getElementById('p_lbused').value.split(',');
+	data.labelsUsed = document.getElementById('p_lbused').replace(' ','').value.split(',');
 	console.log(data);
 	data.modelParam.globalStep = parseInt(document.getElementById('p_gstep').value);
 	data.modelParam.trainSteps = parseInt(document.getElementById('p_tsteps').value);
