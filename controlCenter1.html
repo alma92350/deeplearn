@@ -10,8 +10,8 @@
   </div>
   <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
   <input id="reportbtn"  onclick="report.init()" value="Init Report"  type="button">
-  <input id="unit_id" placeHolder="unit id" type="text" size=5 value="nini">
-  <input id="data" placeHolder="data" type="text" size=10 value="3000">
+  <input id="unit_id" placeHolder="unit id" type="text" size=8 value="nini">
+  <input id="data" placeHolder="data" type="text" size=8 value="3000">
   <select id="source">
   </select>
   <div id="file_manager">
@@ -114,6 +114,7 @@ var report = {
 						
 					case 'modelVar':
 						report.modelVar[payload.user] = payload.data;
+						updateSource(); // update source drop list
 						console.log(payload.data);
 						createSystemMessage("Available data source: " + Object.keys(report.modelVar));
 						var autoSave = document.getElementById('autoSave');
@@ -197,7 +198,7 @@ var report = {
 						
 						switch(message){
 							case 'setmodel':
-								var fromUnitId = document.getElementById("data").value;
+								var fromUnitId = getSource(); //document.getElementById("data").value;
 								if(fromUnitId===""){
 									createSystemMessage("Provide a data source");
 									return;
@@ -208,12 +209,24 @@ var report = {
 									return;
 								};
 								data = report.modelVar[fromUnitId];
+								// remove any spaces in labelsUsed
+								var dl = data.labelsUsed;
+								for(var i=0;i<dl.length;i++){
+									dl[i] = dl[i].replace(/\s/g, '');
+								}
 								break;
 								
 							case 'setparam':
 								
 								try{
 											data = makeModelParameters();
+											
+											// remove any spaces in labelsUsed
+											var dl = data.labelsUsed;
+											for(var i=0;i<dl.length;i++){
+												dl[i] = dl[i].replace(/\s/g, '');
+											}
+											
 											createSystemMessage("Model Parameters prepared");
 								} catch(err){
 									createSystemMessage("Cannot prepare Model Parameters: " + err);
@@ -281,15 +294,19 @@ function sendMessage() {
 ////////////////////////////////////
 //////// mod var sources ///////////
 ////////////////////////////////////
-function addSource(source){
+function updateSource(){
 	var source = document.getElementById("source");
-	
+	var keys = Object.keys(report.modelVar);
+	var options = "";
+	for(var i=0;i<keys.length;i++){
+		options += '<option value="'+ keys[i] +'">' + keys[i] + '</option>';
+	}
+	source.innerHTML = options;
 }
 
 function getSource(){
 	var source = document.getElementById("source").options;
-	//if(
-	//document.getElementById("source").options.selectedIndex
+	return source[source.selectedIndex].value;	
 }
 
 ////////////////////////////////////
@@ -317,7 +334,7 @@ function saveModelVar(source){
 		createSystemMessage("Provide a filename");
 		return;
 	}
-	var fromUnitId = source===undefined?document.getElementById("data").value:source;
+	var fromUnitId = source===undefined?getSource():source;
 	if(fromUnitId===""){
 		createSystemMessage("Provide a data source");
 		return;
@@ -358,12 +375,13 @@ function loadModelVar(){
         var unitId = data.name!==undefined?data.name:'nemo';
         //console.log(unitId);
         // remove any spaces in labelsUsed
-        var dl = data.labelsUsed;
-        for(var i=0;i<dl.length;i++){
-        	dl[i] = dl[i].replace(/\s/g, '');
-        }
+        //var dl = data.labelsUsed;
+        //for(var i=0;i<dl.length;i++){
+        //	dl[i] = dl[i].replace(/\s/g, '');
+        //}
         
         report.modelVar[unitId] = data;
+        updateSource(); // update source drop list
         createSystemMessage("File loaded");
         createSystemMessage("Available data source: " + Object.keys(report.modelVar));
     };
@@ -416,7 +434,7 @@ function makeModelParameters(){
 
 function displayModelVarParameters(){
 	var dport = document.getElementById("displayParam");
-	var source = document.getElementById("data").value;
+	var source = getSource(); //document.getElementById("data").value;
 	if(source===""){
 		alert("Provide source information");
 	}
@@ -428,45 +446,31 @@ function displayModelVarParameters(){
 	}
 	
 	var mp = modvar.modelParam;
-	var param = '<div>' +
-								'<h2> Model Parameters by ' + modvar.name + '</h2>' +
-								'<p>Global Step: ' + modvar.globalStep + '<br>' +
-								 'Input image size: ' + mp.inputImageSize + '<br>' +
-								 'Target: ' + modvar.target + '<br>' +
-								 'Labels used: ' + modvar.labelsUsed + '<br>' +
-								 'Conv 1 output depth: ' + mp.conv1OutputDepth + '<br>' +
-								 'Conv 2 output depth: ' + mp.conv2OutputDepth + '<br>' +
-								 'Filter size: ' + mp.filterSize + '<br>' +
-								 'Learning rate: ' + mp.learningRate + '<br>' +
-								 'Momentum: ' + mp.momentum + '</p>' +
-							'</div>';
 	
-	//<input id="unit_id" type="text" size=5 value="nini">
-	
-		var editParam = '<div><table border="1">' +
-								 '<tr><td><h2> Model Parameters: </td><td><input id="p_name" type="text" size=20 value="' +
-								 modvar.name + '"></h2></td></tr>' +
-								 '<tr><td>Global Step: </td><td><input id="p_gstep" type="text" size=20 value="' + 
-								 mp.globalStep + '"></td></tr>' +
-								 '<tr><td>Train Steps: </td><td><input id="p_tsteps" type="text" size=20 value="' + 
-								 mp.trainSteps + '"></td></tr>' +
-								 '<tr><td>Input image size: </td><td>' + mp.inputImageSize + '</td></tr>' +
-								 '<tr><td>Target: </td><td><input id="p_target" type="text" size=20 value="' + 
-								 modvar.target + '"></td></tr>' +
-								 '<tr><td>Labels used: </td><td><input id="p_lbused" type="text" size=20 value="' + 
-								 modvar.labelsUsed + '"></td></tr>' +
-								 '<tr><td>Conv 1 output depth: </td><td><input id="p_conv1" type="text" size=20 value="' + 
-								 mp.conv1OutputDepth + '"></td></tr>' +
-								 '<tr><td>Conv 2 output depth: </td><td><input id="p_conv2" type="text" size=20 value="' + 
-								 mp.conv2OutputDepth + '"></td></tr>' +
-								 '<tr><td>Filter size: </td><td><input id="p_filter" type="text" size=20 value="' + 
-								 mp.filterSize + '"></td></tr>' +
-								 '<tr><td>Learning rate: </td><td><input id="p_lrate" type="text" size=20 value="' + 
-								 mp.learningRate + '"></td></tr>' +
-								 '<tr><td>Momentum: </td><td><input id="p_momentum" type="text" size=20 value="' + 
-								 mp.momentum + '"></td></tr>' +
-								 '<tr><td><input onclick="saveModelParameters()" type="button" value="Save Model"></td>' + 
-								 '<td><input onclick="sendModelParameters()" type="button" value="Set Parameters"></td></tr>' + 
+	var editParam = '<div><table border="1">' +
+							 '<tr><td><h2> Model Parameters: </td><td><input id="p_name" type="text" size=20 value="' +
+							 modvar.name + '"></h2></td></tr>' +
+							 '<tr><td>Global Step: </td><td><input id="p_gstep" type="text" size=20 value="' + 
+							 mp.globalStep + '"></td></tr>' +
+							 '<tr><td>Train Steps: </td><td><input id="p_tsteps" type="text" size=20 value="' + 
+							 mp.trainSteps + '"></td></tr>' +
+							 '<tr><td>Input image size: </td><td>' + mp.inputImageSize + '</td></tr>' +
+							 '<tr><td>Target: </td><td><input id="p_target" type="text" size=20 value="' + 
+							 modvar.target + '"></td></tr>' +
+							 '<tr><td>Labels used: </td><td><input id="p_lbused" type="text" size=20 value="' + 
+							 modvar.labelsUsed + '"></td></tr>' +
+							 '<tr><td>Conv 1 output depth: </td><td><input id="p_conv1" type="text" size=20 value="' + 
+							 mp.conv1OutputDepth + '"></td></tr>' +
+							 '<tr><td>Conv 2 output depth: </td><td><input id="p_conv2" type="text" size=20 value="' + 
+							 mp.conv2OutputDepth + '"></td></tr>' +
+							 '<tr><td>Filter size: </td><td><input id="p_filter" type="text" size=20 value="' + 
+							 mp.filterSize + '"></td></tr>' +
+							 '<tr><td>Learning rate: </td><td><input id="p_lrate" type="text" size=20 value="' + 
+							 mp.learningRate + '"></td></tr>' +
+							 '<tr><td>Momentum: </td><td><input id="p_momentum" type="text" size=20 value="' + 
+							 mp.momentum + '"></td></tr>' +
+							 '<tr><td><input onclick="saveModelParameters()" type="button" value="Save Model"></td>' + 
+							 '<td><input onclick="sendModelParameters()" type="button" value="Set Parameters"></td></tr>' + 
 							'</div></table>';
 	
 	dport.innerHTML = editParam;
@@ -474,7 +478,7 @@ function displayModelVarParameters(){
 
 function displayModelVarPredictions(){
 	var dport = document.getElementById("displayPort");
-	var source = document.getElementById("data").value;
+	var source = getSource(); //document.getElementById("data").value;
 	if(source===""){
 		alert("Provide source information");
 	}
