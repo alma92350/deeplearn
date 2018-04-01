@@ -392,7 +392,7 @@ function makeModelParameters(){
 	// convert into model var format
 	data.name = document.getElementById('p_name').value;
 	data.target = document.getElementById('p_target').value;
-	data.labelsUsed = document.getElementById('p_lbused').replace(' ','').value.split(',');
+	data.labelsUsed = document.getElementById('p_lbused').value.replace(' ','').split(',');
 	console.log(data);
 	data.modelParam.globalStep = parseInt(document.getElementById('p_gstep').value);
 	data.modelParam.trainSteps = parseInt(document.getElementById('p_tsteps').value);
