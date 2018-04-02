@@ -155,6 +155,8 @@ var labelRevD = [];
 function initialize(labels=_LABELS, target=TARGET){
 	//report.init();
 	predictionShown = false;
+	lastPredictions={};
+	lastUnlabeledPredictions = {};
 	
 	LABELS_USED = labels;
 	TARGET = target;
@@ -452,7 +454,6 @@ var Scheduler = {
 							case 1:
 							case 3:
 							case 5:
-								//showPredictions();
 								makeTrainingBatchOfWrongPredictions();
 								if(trainingBatch.size>0){
 									logAndDone.log("scheduler: Wrong prediction samples: " + trainingBatch.size);
@@ -467,7 +468,6 @@ var Scheduler = {
 							case 2:
 							case 4:
 							case 6:
-								//showPredictions();
 								makeTrainingBatch_OnLowProbability(Scheduler._probaLevel);
 								if(trainingBatch.size>0){
 									logAndDone.log("scheduler: Low probability samples: " +
@@ -714,22 +714,12 @@ function makePredictionsByBatch(from,num){
 	}
 }
 
-
-async function showPredictions(whenDone){
-	var num = 10;
-	logAndDone.log("make predictions by batch");
-	
-	var from = 0;
-	
-	// skip labeled samples if already verified
-	if(predictionShown)
-		for(from;(from<iDataStack.length)&&(iDataStack[from].label!=='none');from++){}
-			
-	console.log('from: ' + from);
-	for(from;from<iDataStack.length;from +=num){
+async function makePredictions(from, whenDone){
+	var maxNum = 10;
+	for(from;from<iDataStack.length;from +=maxNum){
 		try {
-			makePredictionsByBatch(from,Math.min(num,iDataStack.length-from));
-			if(from%(50*num)==0)
+			makePredictionsByBatch(from,Math.min(maxNum,iDataStack.length-from));
+			if(from%(50*maxNum)==0)
 				report.send("500 predictions...");
 			await dl.nextFrame();
 		} catch(err){
@@ -738,10 +728,12 @@ async function showPredictions(whenDone){
 		
 	}
 	
-	predictionShown = true;
-	
+	whenDone();
+}
+
+function drawPredictions(from){
 	// show predictions from iDataStack
-	for(var i=0; i<iDataStack.length;i++){
+	for(var i=from; i<iDataStack.length;i++){
 		if(iDataStack[i].label=='none'){
 			var divlab = document.getElementById("div_label_"+i);
 		
@@ -756,12 +748,49 @@ async function showPredictions(whenDone){
 		}
 	}
 	logAndDone.log("predictions shown!");
+	predictionShown = true;
+}
+
+function showPredictions(whenDone){
+	logAndDone.log("make predictions on all samples");
 	
-	reportPredictions();
-	whenDone();
+	var from = 0;
+	
+	// skip labeled samples if already verified
+	if(predictionShown)
+		for(from;(from<iDataStack.length)&&(iDataStack[from].label!=='none');from++){
+		};
+			
+	console.log('predictions from index: ' + from);
+	
+	makePredictions(from,()=>{
+		drawPredictions(0);
+		
+		reportPredictions();
+		whenDone();
+	});
+}
+
+function predictUnlabeledSamples(whenDone){
+	logAndDone.log("make predictions on unlabeled samples");
+	
+	var from = 0;
+	// skip labeled samples if already verified
+	for(from;(from<iDataStack.length)&&(iDataStack[from].label!=='none');from++){
+	};
+
+	console.log('predictions from index: ' + from);
+	
+	makePredictions(from,()=>{
+		drawPredictions(from);
+		
+		reportUnlabeledPredictions();
+		whenDone();
+	});
 }
 
 var lastPredictions={};
+var lastUnlabeledPredictions = {};
 
 function reportPredictions(){
 	var goodPredictions=0;
@@ -839,10 +868,32 @@ function reportPredictions(){
 							lessThan90pc: lessThan90pc,
 							in_divPred: in_divPred,
 							unlabeled: unlabeled,
-							
 						};
 }
 
+function reportUnlabeledPredictions(){
+	var unlabeled = [];
+	for(i=0;i<iDataStack.length;i++){
+		var lb = iDataStack[i].label;
+		if(lb==='none'){
+			unlabeled.push(
+				{
+					src: iDataStack[i].src,
+					idx: iDataStack[i].idx,
+					pred:iDataStack[i].predictions[0].prediction,
+					proba:iDataStack[i].predictions[0].probability,
+				}
+			);
+		}
+	}
+	lastUnlabeledPredictions = {
+							globalStep : GLOBAL_STEP,
+							trainSteps : TRAIN_STEPS,
+							target: TARGET,
+							labelsUsed: LABELS_USED,
+							unlabeled : unlabeled,
+						};
+}
 /////////////////////////////////////////////////////////////////////
 
 
@@ -884,6 +935,7 @@ const CommandNames = [
 	'stop',
 	'steps',
 	'train',
+	'accuracy',
 	'predict',
 	'proba',
 	'wrong',
@@ -938,7 +990,21 @@ const processCommands = [
 		trainModel_OnAll();
 	},
 	function(){
-		showPredictions(()=>{logAndDone.log("prediction done!")});
+		showPredictions(()=>{logAndDone.log("Accuracy done!")});
+	},
+	function(){
+		predictUnlabeledSamples(()=>{
+									var data = {
+										name: report.name,
+										target: TARGET,
+										labelsUsed: LABELS_USED,
+										data: getModelVariables(),
+										modelParam: getModelParameters(),
+										//lastPredictions: lastPredictions,
+										lastUnlabeledPredictions : lastUnlabeledPredictions,
+									};
+									report.send("last unlabeled predictions", data);
+								});
 	},
 	function(){
 		trainModel_OnLowProbability();

@@ -110,10 +110,18 @@ var report = {
 				var chat = document.getElementById('chat_box');
 				chat.scrollTop = chat.scrollHeight;
 				switch(payload.message) {
+					case 'last unlabeled predictions':
+						report.modelVar[payload.user + '.lup'] = payload.data;
+						updateSources(); // update source drop list
+						console.log(payload.data);
+						createSystemMessage("Available data source: " + Object.keys(report.modelVar));
+						break;
+						
 					case 'hello!':
 					case '[Connected]':
 						updateConnectedUnits(payload.user);
 						break;
+						
 					case 'commands':
 						CommandNames = payload.data;
 						drawCommands();
@@ -405,7 +413,7 @@ function destroyClickedElement(event)
 
 function loadModelVar(){
     var fileToLoad = document.getElementById("fileToLoad").files[0];
- 
+ 		
     var fileReader = new FileReader();
     fileReader.onload = function(fileLoadedEvent) 
     {
