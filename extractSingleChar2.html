@@ -115,6 +115,8 @@ const canvas_ori = document.getElementById('canvas_ori');
 const canvas_out = document.getElementById('canvas_out');
 var ctx,imageData,data;
 
+var predictionShown = false;
+
 /////////////////////////
 var   Max_files = 5;
 
@@ -152,6 +154,8 @@ var labelRevD = [];
 
 function initialize(labels=_LABELS, target=TARGET){
 	//report.init();
+	predictionShown = false;
+	
 	LABELS_USED = labels;
 	TARGET = target;
 	TARGET_LABELS =[TARGET,NOT_TARGET];
@@ -710,7 +714,6 @@ function makePredictionsByBatch(from,num){
 	}
 }
 
-var predictionShown = false;
 
 async function showPredictions(whenDone){
 	var num = 10;
