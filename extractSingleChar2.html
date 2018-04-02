@@ -105,6 +105,8 @@
 // number in prediction batch + catch error
 // correct next Training batch: case target length == 0
 // use hashes to provide ws Uri and report name
+// avoid predict test values again
+// only after training
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -518,6 +520,7 @@ function trainingDone(){
 	else
 		logAndDone.log("Training done. Error: while saving variables!");
 	
+	predictionShown = false;
 	report.processCommand2('getmodel');
 };
 
@@ -707,18 +710,32 @@ function makePredictionsByBatch(from,num){
 	}
 }
 
+var predictionShown = false;
+
 async function showPredictions(whenDone){
 	var num = 10;
 	logAndDone.log("make predictions by batch");
-	for(from=0;from<iDataStack.length;from +=num){
+	
+	var from = 0;
+	
+	// skip labeled samples if already verified
+	if(predictionShown)
+		for(from;(from<iDataStack.length)&&(iDataStack[from].label!=='none');from++){}
+			
+	console.log('from: ' + from);
+	for(from;from<iDataStack.length;from +=num){
 		try {
 			makePredictionsByBatch(from,Math.min(num,iDataStack.length-from));
+			if(from%(50*num)==0)
+				report.send("500 predictions...");
 			await dl.nextFrame();
 		} catch(err){
 			report.send("Error: could not perform predictions" + err);
 		}
 		
 	}
+	
+	predictionShown = true;
 	
 	// show predictions from iDataStack
 	for(var i=0; i<iDataStack.length;i++){
