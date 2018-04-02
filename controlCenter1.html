@@ -8,12 +8,16 @@
   <div>
   	<table id="cmd_panel"></table>
   </div>
-  <input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
-  <input id="reportbtn"  onclick="report.init()" value="Init Report"  type="button">
-  <input id="unit_id" placeHolder="unit id" type="text" size=8 value="nini">
-  <input id="data" placeHolder="data" type="text" size=8 value="3000">
-  <select id="source">
-  </select>
+  <table>
+		<tr><td colspan='3'><input id="webSocket" type="text" size=20 placeHolder="Address to a websocket">
+		<input id="reportbtn"  onclick="report.init()" value="Init Report"  type="button">
+		</td></tr>
+		<tr>
+		<td><label><strong>Talk to: </strong></label><select id="sel_unitId"></select></td>
+		<td><label><strong>data: </strong></label><input id="data" placeHolder="data" type="text" size=8 value="3000"></td>
+		<td><label><strong>Source from: </strong></label><select id="source" onchange="sourceChanged()"></select></td>
+		</tr>
+  </table>
   <div id="file_manager">
 		<table>
 			<tr>
@@ -33,9 +37,8 @@
 					
 			</tr>
 			<tr>
-				<td>Display Model  </td>
-				<td><input onclick="displayModelVarPredictions()" type="button" value="Predictions"></td>
-				<td><input onclick="displayModelVarParameters()" type="button" value="Model Parameters"></td>
+				<td><label for="display_model">Display Model</label></td>
+				<td><input id="display_model" onclick="displayModel()" type="button" value="source"></td>
 			</tr>
 		</table>
   </div>
@@ -107,6 +110,10 @@ var report = {
 				var chat = document.getElementById('chat_box');
 				chat.scrollTop = chat.scrollHeight;
 				switch(payload.message) {
+					case 'hello!':
+					case '[Connected]':
+						updateConnectedUnits(payload.user);
+						break;
 					case 'commands':
 						CommandNames = payload.data;
 						drawCommands();
@@ -114,7 +121,7 @@ var report = {
 						
 					case 'modelVar':
 						report.modelVar[payload.user] = payload.data;
-						updateSource(); // update source drop list
+						updateSources(); // update source drop list
 						console.log(payload.data);
 						createSystemMessage("Available data source: " + Object.keys(report.modelVar));
 						var autoSave = document.getElementById('autoSave');
@@ -192,7 +199,7 @@ var report = {
 					},
 	sendTo: function(message){
 						var data = document.getElementById("data").value;
-						var unitId = document.getElementById("unit_id").value;
+						var unitId = getUnitId();
 						
 						unitId = unitId!==""?'.'+unitId:'';
 						
@@ -294,7 +301,14 @@ function sendMessage() {
 ////////////////////////////////////
 //////// mod var sources ///////////
 ////////////////////////////////////
-function updateSource(){
+
+function sourceChanged(){
+	var modbtn = document.getElementById("display_model");
+	modbtn.value = getSource();
+	console.log("souce changed: " + modbtn.value);
+}
+
+function updateSources(){
 	var source = document.getElementById("source");
 	var keys = Object.keys(report.modelVar);
 	var options = "";
@@ -302,11 +316,36 @@ function updateSource(){
 		options += '<option value="'+ keys[i] +'">' + keys[i] + '</option>';
 	}
 	source.innerHTML = options;
+	sourceChanged();
 }
 
 function getSource(){
 	var source = document.getElementById("source").options;
 	return source[source.selectedIndex].value;	
+}
+////////////////////////////////////
+///////////// Unit Id //////////////
+////////////////////////////////////
+var connectedUnits = new Set();
+updateConnectedUnits('all');
+function updateConnectedUnits(unit){
+	var sui = document.getElementById("sel_unitId");
+	if(connectedUnits.has(unit)) return;
+	
+	connectedUnits.add(unit);
+	
+	var options = "";
+	for(let unit of connectedUnits){
+		options += '<option value="'+ unit +'">' + unit + '</option>';
+	}
+	//console.log(options);
+	sui.innerHTML = options;
+}
+function getUnitId(){
+	var units = document.getElementById("sel_unitId").options;
+	var selected = units[units.selectedIndex].value;
+	selected = selected==='all'?'':selected;
+	return selected;	
 }
 
 ////////////////////////////////////
@@ -373,6 +412,7 @@ function loadModelVar(){
         var textFromFileLoaded = fileLoadedEvent.target.result;
         var data = JSON.parse(textFromFileLoaded);
         var unitId = data.name!==undefined?data.name:'nemo';
+        unitId += '(file)';
         //console.log(unitId);
         // remove any spaces in labelsUsed
         //var dl = data.labelsUsed;
@@ -381,7 +421,7 @@ function loadModelVar(){
         //}
         
         report.modelVar[unitId] = data;
-        updateSource(); // update source drop list
+        updateSources(); // update source drop list
         createSystemMessage("File loaded");
         createSystemMessage("Available data source: " + Object.keys(report.modelVar));
     };
@@ -432,17 +472,41 @@ function makeModelParameters(){
 	return data;
 }
 
-function displayModelVarParameters(){
-	var dport = document.getElementById("displayParam");
-	var source = getSource(); //document.getElementById("data").value;
+function displayModel(){
+	var dport = document.getElementById("displayPort");
+	var source = getSource();
 	if(source===""){
 		alert("Provide source information");
+		return;
 	}
-	console.log(source);
+	console.log('source ' + source);
 	var modvar = report.modelVar[source];
 	
 	if(modvar===undefined){
 		alert("No data for this source");
+		return;
+	}
+	
+	displayModelVarParameters();
+	if(modvar.lastPredictions.globalStep!==undefined)
+		displayModelVarPredictions();
+	else
+		dport.innerHTML = "";
+}
+
+function displayModelVarParameters(){
+	var dport = document.getElementById("displayParam");
+	var source = getSource();
+	if(source===""){
+		alert("Provide source information");
+		return;
+	}
+	console.log('source' + source);
+	var modvar = report.modelVar[source];
+	
+	if(modvar===undefined){
+		alert("No data for this source");
+		return;
 	}
 	
 	var mp = modvar.modelParam;
@@ -481,12 +545,14 @@ function displayModelVarPredictions(){
 	var source = getSource(); //document.getElementById("data").value;
 	if(source===""){
 		alert("Provide source information");
+		return;
 	}
 	console.log(source);
 	var modvar = report.modelVar[source];
 	
 	if(modvar===undefined){
 		alert("No data for this source");
+		return;
 	}
 	////////// prediction table /////////////////
 	var lp = modvar.lastPredictions;
