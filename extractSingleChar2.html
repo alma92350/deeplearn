@@ -108,7 +108,7 @@
 // avoid predict test values again
 // only after training
 // allow predictions on unlabled only
-// provide average of losses
+// 
 // add configuration of strides and outlayer in model
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
@@ -119,7 +119,6 @@ const canvas_out = document.getElementById('canvas_out');
 var ctx,imageData,data;
 
 var predictionShown = false;
-var averageLoss = 0;
 var lastLosses = [];
 /////////////////////////
 var   Max_files = 5;
@@ -159,7 +158,6 @@ var labelRevD = [];
 function initialize(labels=_LABELS, target=TARGET){
 	//report.init();
 	predictionShown = false;
-	averageLoss = 0;
 	lastLosses = [];
 	lastPredictions={};
 	
@@ -533,14 +531,12 @@ function trainingDone(){
 	report.processCommand2('getmodel');
 };
 
-function trainingLog(step,message,loss){
-	averageLoss += loss;
+function trainingLog(step,message,cost){
 	
 	if(step%100==0){
-		var avr = step==0?averageLoss:averageLoss/100;
-		logAndDone.log(message + avr);
-		lastLosses.push(avr);
-		averageLoss = 0;
+		var loss = cost.dataSync();
+		logAndDone.log(message + loss);
+		lastLosses.push(loss);
 	};
 		
 	if(step%10000==0){

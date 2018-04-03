@@ -248,7 +248,7 @@ async function train(data, log, done) {
       return loss(batch.labels, model(batch.xs));
     }, returnCost);
 
-		log(i,`GLOBAL_STEP: ${GLOBAL_STEP}, average loss[${i}]: `, cost.dataSync());
+		log(i,`GLOBAL_STEP: ${GLOBAL_STEP}, average loss[${i}]: `, cost);
 		
     await dl.nextFrame();
   }
