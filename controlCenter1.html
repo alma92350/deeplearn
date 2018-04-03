@@ -496,7 +496,7 @@ function displayModel(){
 	}
 	
 	displayModelVarParameters();
-	if(modvar.lastPredictions!==undefined){
+	if(modvar.lastPredictions.globalStep!==undefined){
 		displayModelVarPredictions();
 	} else {
 		dport.innerHTML = "";

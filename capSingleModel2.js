@@ -18,7 +18,7 @@ BATCH_SIZE = 10;
 var	LABELS_SIZE = 2; // 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 var GLOBAL_STEP = 0;
 var IMAGE_SIZE = 30;
-var OUT_LAYER_SIZE = 7; // computed or look at the layer 2 shape layer2.print()
+var OUT_LAYER_SIZE = 7*2; // computed or look at the layer 2 shape layer2.print()
 ////////////////////////////////
 
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
@@ -215,7 +215,8 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
         .relu()
         .maxPool([2, 2], strides1, pad1);
   });
-	
+	//console.log("layer1 ok");
+	//console.log(layer1.print());
   // Conv 2
   const layer2 = dl.tidy(() => {
     return layer1.conv2d(conv2Weights, 1, 'same')
