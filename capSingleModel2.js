@@ -18,9 +18,9 @@ BATCH_SIZE = 10;
 var	LABELS_SIZE = 2; // 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 var GLOBAL_STEP = 0;
 var IMAGE_SIZE = 30;
-var STRIDES_1 = 1;
+var STRIDES_1 = 2;
 var STRIDES_2 = 2;
-var OUT_LAYER_SIZE = 7*2; // computed or look at the layer 2 shape layer2.print()
+var OUT_LAYER_SIZE = 7; // computed or look at the layer 2 shape layer2.print()
 ////////////////////////////////
 
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
@@ -32,7 +32,7 @@ const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
 //var fullyConnectedBias_input;
 
 var FILTER_SIZE=5;
-var conv1OutputDepth = 32;
+var conv1OutputDepth = 8;
 var conv1Weights;
 
 var conv2InputDepth = conv1OutputDepth;
@@ -247,8 +247,9 @@ async function train(data, log, done) {
       const batch = data.nextTrainBatch(BATCH_SIZE);
       return loss(batch.labels, model(batch.xs));
     }, returnCost);
-
-		log(i,`GLOBAL_STEP: ${GLOBAL_STEP}, average loss[${i}]: `, cost);
+		
+		if(i%100==0)
+			log(i,`${cost.dataSync()}`);
 		
     await dl.nextFrame();
   }

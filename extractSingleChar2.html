@@ -531,14 +531,10 @@ function trainingDone(){
 	report.processCommand2('getmodel');
 };
 
-function trainingLog(step,message,cost){
+function trainingLog(step,message){
+	logAndDone.log('GLOBAL_STEP: ' + GLOBAL_STEP + ': loss: ' + message);
+	lastLosses.push(parseFloat(message));
 	
-	if(step%100==0){
-		var loss = cost.dataSync();
-		logAndDone.log(message + loss);
-		lastLosses.push(loss);
-	};
-		
 	if(step%10000==0){
 		//report.processCommand2('predict');
 		report.processCommand2('getmodel');
