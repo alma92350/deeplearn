@@ -107,6 +107,8 @@
 // use hashes to provide ws Uri and report name
 // avoid predict test values again
 // only after training
+// allow predictions on unlabled only
+// provide average of losses
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -116,7 +118,8 @@ const canvas_out = document.getElementById('canvas_out');
 var ctx,imageData,data;
 
 var predictionShown = false;
-
+var averageLoss = 0;
+var lastLosses = [];
 /////////////////////////
 var   Max_files = 5;
 
@@ -155,8 +158,9 @@ var labelRevD = [];
 function initialize(labels=_LABELS, target=TARGET){
 	//report.init();
 	predictionShown = false;
+	averageLoss = 0;
+	lastLosses = [];
 	lastPredictions={};
-	lastUnlabeledPredictions = {};
 	
 	LABELS_USED = labels;
 	TARGET = target;
@@ -528,13 +532,20 @@ function trainingDone(){
 	report.processCommand2('getmodel');
 };
 
-function trainingLog(step,message){
-	if(step%100==0)
-		logAndDone.log(message);
+function trainingLog(step,message,loss){
+	averageLoss += loss;
+	
+	if(step%100==0){
+		var avr = step==0?averageLoss:averageLoss/100;
+		logAndDone.log(message + avr);
+		lastLosses.push(avr);
+		averageLoss = 0;
+	};
 		
 	if(step%10000==0){
 		//report.processCommand2('predict');
 		report.processCommand2('getmodel');
+		lastLosses = []; // clear after report
 	}
 }
 
@@ -747,8 +758,9 @@ function drawPredictions(from){
 			divlab.innerHTML = '<table><tbody>' + predprob.join(' ') + '</tbody></table>';
 		}
 	}
-	logAndDone.log("predictions shown!");
-	predictionShown = true;
+	logAndDone.log("predictions shown! from: " + from);
+	if(from==0)
+		predictionShown = true;
 }
 
 function showPredictions(whenDone){
@@ -790,7 +802,7 @@ function predictUnlabeledSamples(whenDone){
 }
 
 var lastPredictions={};
-var lastUnlabeledPredictions = {};
+
 
 function reportPredictions(){
 	var goodPredictions=0;
@@ -886,13 +898,21 @@ function reportUnlabeledPredictions(){
 			);
 		}
 	}
-	lastUnlabeledPredictions = {
-							globalStep : GLOBAL_STEP,
-							trainSteps : TRAIN_STEPS,
-							target: TARGET,
-							labelsUsed: LABELS_USED,
-							unlabeled : unlabeled,
-						};
+	if(lastPredictions.globalStep==undefined){
+		lastPredictions = {
+								globalStep : GLOBAL_STEP,
+								trainSteps : TRAIN_STEPS,
+								target: TARGET,
+								labelsUsed: LABELS_USED,
+								totalSamples : "",
+								goodPredictions: "",
+								lessThan50pc: "",
+								lessThan90pc: "",
+								in_divPred: "",
+								unlabeled : unlabeled,
+							};
+	} else
+		lastPredictions.unlabeled = unlabeled;
 }
 /////////////////////////////////////////////////////////////////////
 
@@ -1000,8 +1020,8 @@ const processCommands = [
 										labelsUsed: LABELS_USED,
 										data: getModelVariables(),
 										modelParam: getModelParameters(),
-										//lastPredictions: lastPredictions,
-										lastUnlabeledPredictions : lastUnlabeledPredictions,
+										lastPredictions: lastPredictions,
+										lastLosses: lastLosses,
 									};
 									report.send("last unlabeled predictions", data);
 								});
@@ -1044,6 +1064,7 @@ const processCommands = [
 						data: getModelVariables(),
 						modelParam: getModelParameters(),
 						lastPredictions: lastPredictions,
+						lastLosses: lastLosses,
 					};
 		report.send("modelVar",data);
 	},

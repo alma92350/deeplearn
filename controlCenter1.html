@@ -496,10 +496,11 @@ function displayModel(){
 	}
 	
 	displayModelVarParameters();
-	if(modvar.lastPredictions.globalStep!==undefined)
+	if(modvar.lastPredictions!==undefined){
 		displayModelVarPredictions();
-	else
+	} else {
 		dport.innerHTML = "";
+	}
 }
 
 function displayModelVarParameters(){
@@ -564,21 +565,27 @@ function displayModelVarPredictions(){
 	}
 	////////// prediction table /////////////////
 	var lp = modvar.lastPredictions;
-	var predInfo = "<div>" + 
+	var predResults ="";
+	var predInfo = "";
+	try{
+		predInfo = "<div>" + 
 									 "<h2> Prediction Info by " + modvar.name + "</h2>" +
 									 "<p>Global Step: " + lp.globalStep + "<br>" +
 									 "Target: " + lp.target + "<br>" +
 									 "Labels used: " + lp.labelsUsed + "<br>" +
 									 "Total Samples: " + lp.totalSamples + "<br>" +
 									 "Good predictions: " + lp.goodPredictions + "<br>" +
-									 "Accuracy: " + Math.floor(100* parseInt(lp.goodPredictions)/parseInt(lp.totalSamples)) + "%<br>" +
+									 "Accuracy: " + 
+									 lp.goodPredictions!==''?Math.floor(100* parseInt(lp.goodPredictions)/parseInt(lp.totalSamples)):'--' + "%<br>" +
 									 "Less than 50% Probability: " + lp.lessThan50pc + "<br>" +
 									 "Less than 90% Probability: " + lp.lessThan90pc +
-								 "</p></div>";
+								"</p></div>";
 	
-	////////////////
-	var predResults = "<div>" + lp.in_divPred + "</div>";
-	
+		////////////////
+		predResults = "<div>" + lp.in_divPred + "</div>";
+	} catch(err){
+		console.log(err);
+	}
 	////////////////
 	var ulTable = '<table border="1"> <col width="80"><col width="80"><col width="80"><col width="80"><col width="80">';
 	var unlabeled = modvar.lastPredictions.unlabeled;

@@ -205,7 +205,7 @@ function loss(labels, ys) {  // : dl.Tensor2D: dl.Tensor2D
 function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
   const xs = inputXs.as4D(-1, IMAGE_SIZE, IMAGE_SIZE, 1);
 
-  const strides1 = 2;
+  const strides1 = 1;
 	const strides2 = 2;
   const pad1 = 0;
 	const pad2 = 0;
@@ -235,14 +235,13 @@ function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
 async function train(data, log, done) {
   const returnCost = true;
 
-  for (let i = 0; i < TRAIN_STEPS; i++) {
-  	GLOBAL_STEP++;
+  for (let i = 0; i < TRAIN_STEPS; i++,GLOBAL_STEP++) {
     const cost = optimizer.minimize(() => {
       const batch = data.nextTrainBatch(BATCH_SIZE);
       return loss(batch.labels, model(batch.xs));
     }, returnCost);
 
-		log(i,`GLOBAL_STEP: ${GLOBAL_STEP}, loss[${i}]: ${cost.dataSync()}`);
+		log(i,`GLOBAL_STEP: ${GLOBAL_STEP}, average loss[${i}]: `, cost.dataSync());
 		
     await dl.nextFrame();
   }
