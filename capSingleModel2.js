@@ -19,8 +19,8 @@ var	LABELS_SIZE = 2; // 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 var GLOBAL_STEP = 0;
 var IMAGE_SIZE = 30;
 var STRIDES_1 = 2;
-var STRIDES_2 = 2;
-var OUT_LAYER_SIZE = 7; // computed or look at the layer 2 shape layer2.print()
+var STRIDES_2 = 3;
+var OUT_LAYER_SIZE = 5; // computed or look at the layer 2 shape layer2.print()
 ////////////////////////////////
 
 const optimizer = dl.train.momentum(LEARNING_RATE,MOMENTUM);
