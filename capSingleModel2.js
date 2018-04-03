@@ -18,6 +18,8 @@ BATCH_SIZE = 10;
 var	LABELS_SIZE = 2; // 26; // ABCDEFGHKLMNPRTWXYZ234569 & 'none'
 var GLOBAL_STEP = 0;
 var IMAGE_SIZE = 30;
+var STRIDES_1 = 1;
+var STRIDES_2 = 2;
 var OUT_LAYER_SIZE = 7*2; // computed or look at the layer 2 shape layer2.print()
 ////////////////////////////////
 
