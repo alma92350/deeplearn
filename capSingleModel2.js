@@ -86,6 +86,8 @@ function initializeModel(param){
 		conv1OutputDepth = param.conv1OutputDepth;
 		conv2InputDepth = conv1OutputDepth;
 		conv2OutputDepth = param.conv2OutputDepth;
+		STRIDES_1 = param.strides1;
+		STRIDES_2 = param.strides2;
 		OUT_LAYER_SIZE = param.outLayerSize;
 		console.log('param: ' + param);
 	} else {
@@ -104,6 +106,8 @@ function getModelParameters(){
 		filterSize : FILTER_SIZE,
 		conv1OutputDepth : conv1OutputDepth,
 		conv2OutputDepth : conv2OutputDepth,
+		strides1 : STRIDES_1,
+		strides2 : STRIDES_2,
 		outLayerSize : OUT_LAYER_SIZE,
 	};
 	return param;
@@ -205,8 +209,8 @@ function loss(labels, ys) {  // : dl.Tensor2D: dl.Tensor2D
 function model(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
   const xs = inputXs.as4D(-1, IMAGE_SIZE, IMAGE_SIZE, 1);
 
-  const strides1 = 1;
-	const strides2 = 2;
+  const strides1 = STRIDES_1;
+	const strides2 = STRIDES_2;
   const pad1 = 0;
 	const pad2 = 0;
 

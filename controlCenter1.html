@@ -473,7 +473,10 @@ function makeModelParameters(){
 	data.modelParam.inputImageSize  = 30;
 	data.modelParam.learningRate = parseFloat(document.getElementById('p_lrate').value);
 	data.modelParam.momentum = parseFloat(document.getElementById('p_momentum').value);
-	data.modelParam.outLayerSize = 7;
+	
+	data.modelParam.strides1 = parseFloat(document.getElementById('p_strides1').value);
+	data.modelParam.strides2 = parseFloat(document.getElementById('p_strides2').value);
+	data.modelParam.outLayerSize = parseFloat(document.getElementById('p_outLayerSize').value);
 	
 	console.log(data);
 	
@@ -542,6 +545,13 @@ function displayModelVarParameters(){
 							 mp.learningRate + '"></td></tr>' +
 							 '<tr><td>Momentum: </td><td><input id="p_momentum" type="text" size=20 value="' + 
 							 mp.momentum + '"></td></tr>' +
+							 '<tr><td>Strides_1: </td><td><input id="p_strides1" type="text" size=20 value="' + 
+							 mp.strides1 + '"></td></tr>' +
+							 '<tr><td>Strides_2: </td><td><input id="p_strides2" type="text" size=20 value="' + 
+							 mp.strides2 + '"></td></tr>' +
+							 '<tr><td>Out Layer size: </td><td><input id="p_outLayerSize" type="text" size=20 value="' + 
+							 mp.outLayerSize + '"></td></tr>' +
+							 
 							 '<tr><td><input onclick="saveModelParameters()" type="button" value="Save Model"></td>' + 
 							 '<td><input onclick="sendModelParameters()" type="button" value="Set Parameters"></td></tr>' + 
 							'</div></table>';
