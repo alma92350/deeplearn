@@ -136,6 +136,10 @@ var report = {
 						if(autoSave.checked)
 							saveModelVar(payload.user);
 						break;
+						
+					case 'hi':
+						report.send('hello!');
+						break;
 												
 					default:
 						break;

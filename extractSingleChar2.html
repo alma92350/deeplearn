@@ -533,7 +533,8 @@ function trainingDone(){
 
 function trainingLog(step,message){
 	logAndDone.log('GLOBAL_STEP: ' + GLOBAL_STEP + ': loss: ' + message);
-	lastLosses.push(parseFloat(message));
+	if(step%1000==0)
+		lastLosses.push(parseFloat(message));
 	
 	if(step%10000==0){
 		//report.processCommand2('predict');
