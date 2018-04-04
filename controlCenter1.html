@@ -112,8 +112,28 @@ var report = {
 				switch(payload.message) {
 					case 'getmodel':
 						try{
+							if(payload.user!==('firefox.' + report.name)) return; // not for me
 							var source = payload.data;
-							report.send("modelVar",report.modelVar[source]);
+							switch(source){
+								case 'list':
+									var sources = Object.keys(report.modelVar);
+									report.send("Available sources: " + sources, '',sources);
+									break;
+								
+								case 'all':
+									var sources = Object.keys(report.modelVar);
+									for(var i=0; i<sources.length;i++)
+										report.send("modvar",'',report.modelVar[sources]);
+									break;
+									 
+								default:
+									var data = report.modelVar[source];
+									if(data!==undefined)
+										report.send("modelVar",'',data);
+									else
+									report.send("no data for: " + source);
+									break;
+							}
 						} catch(err){
 							report.send("Error data retrieval: " + err);
 						}
@@ -199,6 +219,8 @@ var report = {
 					/////// keep alive //////
 					clearTimeout(report.timer);
 					report.timer = setTimeout(()=>{report.send("coucou!");}, 25000);
+					if(payload.message==='coucou!') return;
+					
 					if(payload.user!==report.name)
 						report.processResponse(payload);
 				}
