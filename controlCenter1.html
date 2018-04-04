@@ -110,6 +110,15 @@ var report = {
 				var chat = document.getElementById('chat_box');
 				chat.scrollTop = chat.scrollHeight;
 				switch(payload.message) {
+					case 'getmodel':
+						try{
+							var source = payload.data;
+							report.send("modelVar",report.modelVar[source]);
+						} catch(err){
+							report.send("Error data retrieval: " + err);
+						}
+						break;
+						
 					case 'last unlabeled predictions':
 						report.modelVar[payload.user + '.lup'] = payload.data;
 						updateSources(); // update source drop list

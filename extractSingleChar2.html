@@ -1001,7 +1001,11 @@ const processCommands = [
 		report.send("TRAIN_STEPS: "+TRAIN_STEPS);
 	},
 	function(){
-		trainModel_OnAll();
+		try{
+			trainModel_OnAll();
+		} catch(err){
+			report.send("Error during training on all: " + err);
+		}
 	},
 	function(){
 		showPredictions(()=>{logAndDone.log("Accuracy done!")});
