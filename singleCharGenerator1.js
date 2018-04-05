@@ -5,7 +5,7 @@ CHAR_Y = 18; //22;
 LINE_WIDTH = 20;
 
 ANGLE_AMP = 71;
-ANGLE_STEP = 71;
+ANGLE_STEP = 35;
 Angle = 0;
 
 

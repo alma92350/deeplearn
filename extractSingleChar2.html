@@ -50,6 +50,52 @@ var inputImageDataStack = [];
 //// build the filters from the char set         /////
 //// use conv and filters to detect the char set /////
 //////////////////////////////////////////////////////
+function drawLocation(layer0){
+	var center_x = layer0.max([1]).argMax().dataSync()[0];
+	var center_y = layer0.max([2]).argMax().dataSync()[0];
+	var score    = layer0.max().dataSync()[0];
+	
+	const canvas = document.getElementById("canvas_ori");
+	const ctx = canvas.getContext("2d");
+	
+	ctx.strokeStyle="#FFFFFF";
+	ctx.strokeRect(center_x-11,center_y-11,21,21);
+	//ctx.strokeRect(0,0,21,21);
+	return {x:center_x, y:center_y, score: score};
+}
+
+function test(target){
+	createTestImage();
+	
+	filterFocus.initialize();
+	
+	filterFocus.makeFilters(target);
+	
+	filterFocus.makeInputXs();
+	
+	var layer0 = filterFocus.model(filterFocus.inputXs);
+	
+	return drawLocation(layer0);
+}
+
+function createTestImage(){
+	const canvas = document.getElementById("canvas_ori");
+	const ctx = canvas.getContext("2d");
+	canvas.width = 100;
+	canvas.height = 30;
+		
+	const inpLabel =  document.getElementById("input_label");
+	const label = inpLabel.value;
+	
+	ctx.fillStyle="black";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  
+	ctx.font = FONT;
+	
+	ctx.fillStyle="white";
+  ctx.fillText(label,5,20);
+  inputImageDataStack = [ctx.getImageData(0,0,canvas_ori.width, canvas_ori.height)];
+}
 
 // get image from inputImageDataStack using the Target elements
 // create a filterStack
@@ -60,24 +106,23 @@ var filterFocus = {
 	STRIDES_1: 1,
 };
 
-filterFocus.initialize = function(){
-	filterFocus.INPUT_IMAGE_WIDTH = inputImageDataStack[0].width;
-	filterFocus.INPUT_IMAGE_HEIGHT = inputImageDataStack[0].height;
-	
+filterFocus.makeFilters = function(target){
 	var xs = [];
 	for(var i=0;i<iDataStack.length;i++){
 		var data = iDataStack[i];
 		
-		if(data.label == TARGET){
+		if(data.label == target){
 			xs.push(makeTensorFromPixels(data));
 		}
 	}
 
 	filterFocus.filterStack = dl.tidy(() => {
-			return xs[0]; //dl.stack(xs,2);
+			return xs[1]; //dl.stack(xs,2);
 		});
-	
-	xs=[];
+};
+
+filterFocus.makeInputXs = function(){
+	var xs=[];
 	for(var i=0 ;i<inputImageDataStack.length;i++){
 		var data = inputImageDataStack[i];
 		xs.push(makeTensorFromPixels(data).as2D(filterFocus.INPUT_IMAGE_WIDTH, filterFocus.INPUT_IMAGE_HEIGHT));
@@ -87,9 +132,15 @@ filterFocus.initialize = function(){
 		});
 }
 
+filterFocus.initialize = function(){
+	filterFocus.INPUT_IMAGE_WIDTH = inputImageDataStack[0].width;
+	filterFocus.INPUT_IMAGE_HEIGHT = inputImageDataStack[0].height;
+
+}
+
 // compute convolution over the input image for each filter
 filterFocus.model = function(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
-  const xs = inputXs.as4D(-1, filterFocus.INPUT_IMAGE_WIDTH, filterFocus.INPUT_IMAGE_HEIGHT, 1);
+  const xs = inputXs.as4D(-1, filterFocus.INPUT_IMAGE_HEIGHT, filterFocus.INPUT_IMAGE_WIDTH, 1);
 
   const strides1 = filterFocus.STRIDES_1;
   const pad1 = 0;
