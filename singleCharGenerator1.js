@@ -1,11 +1,11 @@
-CANVAS_SIZE = 30;
+CANVAS_SIZE = 21;
 FONT = "22px Arial";
-CHAR_X = 9;
-CHAR_Y = 22;
+CHAR_X = 4; //9;
+CHAR_Y = 18; //22;
 LINE_WIDTH = 20;
 
-ANGLE_AMP = 91;
-ANGLE_STEP = 45;
+ANGLE_AMP = 71;
+ANGLE_STEP = 71;
 Angle = 0;
 
 
@@ -49,15 +49,17 @@ function makeLabelBatch(label,ctx){
 	rotateCanvasByAngle(-(ANGLE_AMP/2),ctx);
 	
 	// then set the step increase only!
+	// modified for filterFocus
 	for(var a=0;a<(ANGLE_AMP/ANGLE_STEP);a++){
-		for(var x=0;x<10;x++){
-			for(var y=0;y<10;y++){
-				drawLabel(label,CHAR_X+x-5,CHAR_Y+y-5,ctx);
+		//for(var x=0;x<10;x++){
+		//	for(var y=0;y<10;y++){
+				//drawLabel(label,CHAR_X+x-5,CHAR_Y+y-5,ctx);
+				drawLabel(label,CHAR_X,CHAR_Y,ctx);
 				idata = ctx.getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE);
 				idata.label = label;
 				imageDatas.push(idata);
-			};
-		};
+		//	};
+		//};
 		// finally rotate by angle step
 		rotateCanvasByAngle(ANGLE_STEP,ctx);
 	}
