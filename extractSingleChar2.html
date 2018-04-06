@@ -63,9 +63,14 @@ function drawLocation(layer0){
 	//ctx.strokeRect(0,0,21,21);
 	return {x:center_x, y:center_y, score: score};
 }
+function testAllChar(){
+	for(let label of _LABELS){
+		test(label);
+	};
+};
 
 function test(target){
-	createTestImage();
+	var value = createTestImage()-(3000*255);
 	
 	filterFocus.initialize();
 	
@@ -75,7 +80,9 @@ function test(target){
 	
 	var layer0 = filterFocus.model(filterFocus.inputXs);
 	
-	return drawLocation(layer0);
+	var loc = drawLocation(layer0);
+	
+	console.log(target + ': value: ' + (value/255) + ', x: ' + loc.x + ', y: ' + loc.y +' score: ' + loc.score); 
 }
 
 function createTestImage(){
@@ -95,6 +102,13 @@ function createTestImage(){
 	ctx.fillStyle="white";
   ctx.fillText(label,5,20);
   inputImageDataStack = [ctx.getImageData(0,0,canvas_ori.width, canvas_ori.height)];
+  
+  var value=0;
+  for(var i=0;i<12000;i++)
+  	value += inputImageDataStack[0].data[i];
+  
+  return value;
+  //console.log('display value: ' + (value/255));
 }
 
 // get image from inputImageDataStack using the Target elements
