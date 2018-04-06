@@ -50,58 +50,144 @@ var inputImageDataStack = [];
 //// build the filters from the char set         /////
 //// use conv and filters to detect the char set /////
 //////////////////////////////////////////////////////
+var ff = {
+	ctx : document.getElementById("canvas_ori").getContext("2d"),
+	ctxOut : document.getElementById("canvas_out").getContext("2d"),
+	scores : [],
+	ys : [],
+	dl_layers:[],
+};
 function drawLocation(layer0){
 	var center_x = layer0.max([1]).argMax().dataSync()[0];
 	var center_y = layer0.max([2]).argMax().dataSync()[0];
 	var score    = layer0.max().dataSync()[0];
 	
-	const canvas = document.getElementById("canvas_ori");
-	const ctx = canvas.getContext("2d");
-	
-	ctx.strokeStyle="#FFFFFF";
-	ctx.strokeRect(center_x-11,center_y-11,21,21);
+	//ff.ctxOut.strokeStyle="#FFFFFF";
+	//ff.ctxOut.strokeRect(center_x-11,center_y-11,21,21);
 	//ctx.strokeRect(0,0,21,21);
 	return {x:center_x, y:center_y, score: score};
 }
+
+function nMaxOf(arr,n=5){
+	var newArray = Array.from(arr,(x,i)=>{return {idx:i,val:x};});
+	console.log(newArray);
+	var localMax=[];
+	for(var i=1;i<newArray.length-1;i++){
+		if(newArray[i-1].val<newArray[i].val && newArray[i+1].val<newArray[i].val){
+			localMax.push(newArray[i]);
+		}
+	}
+	console.log(localMax);
+	var sortedMax = localMax.sort((a, b)=>{return (b.val-a.val)});
+	return sortedMax;
+}
+function findCharXLocations(){
+	var idxs = [];
+	for(var i=0; i<ff.scores[0].length;i++){ // 100
+		var someMax=0;
+		for(var j=0;j<ff.scores.length;j++){ // 75
+			//find max
+			if(ff.scores[j][i]>someMax) 
+				someMax = ff.scores[j][i];
+		}
+		//console.log(someMax);
+		var conv=1;
+		for(var j=0;(someMax!==0) && (j<ff.scores.length);j++){
+			conv *= ff.scores[j][i]/someMax;
+		}
+		//console.log('i: ' + i + 'conv: ' + conv);
+		idxs.push(someMax==0?0:conv);
+	}
+	
+	return idxs;
+}
+
 function testAllChar(){
-	for(let label of _LABELS){
-		test(label);
+	//var value = createTestImage()-(3000*255);
+	
+	filterFocus.initialize();
+	filterFocus.makeInputXs();
+	
+	for(var i=0;i<iDataStack.length;i++){
+		var value = 0;
+		for(var j=0;j<(21*21*4);j++){
+			value += iDataStack[i].data[j];
+		}
+		
+		console.log(iDataStack[i].label + ': ' + (value-255*21*21)/3/255);
+	}
+	
+	ff = {
+		ctx : document.getElementById("canvas_ori").getContext("2d"),
+		ctxOut : document.getElementById("canvas_out").getContext("2d"),
+		scores : [],
+		ys : [],
+		dl_layers:[],
 	};
+	
+	ff.ctx.beginPath();
+	for(let label of _LABELS){
+		if(label!=='none')
+			test(label);
+	};
+	
+	var top5 = nMaxOf(findCharXLocations()).slice(0,5);
+	console.log(top5);
+	for(var i=0; i<5; i++){
+		ff.ctxOut.strokeStyle="#FFFFFF";
+		ff.ctxOut.strokeRect(top5[i].idx-11,1,21,29);
+	}
+	ff.ctx.closePath();
+	
+	ff.ctxOut.beginPath();
+	
+	ff.ctxOut.closePath();
 };
 
 function test(target){
-	var value = createTestImage()-(3000*255);
+	//var value = createTestImage()-(3000*255);
 	
-	filterFocus.initialize();
+	//filterFocus.initialize();
 	
-	filterFocus.makeFilters(target);
+	//filterFocus.makeFilters(target);
+	for(var i=0;i<iDataStack.length;i++){
+		var data = iDataStack[i];
+		
+		if(data.label == target){
+			filterFocus.makeAFilter(data);
+			console.log('made a filter');
+			var layer0 = filterFocus.model(filterFocus.inputXs);
+			console.log('layer0 computed');
+			var loc = drawLocation(layer0);
+			
+			ff.dl_layers.push(layer0);
+			ff.scores.push(Array.from(layer0.max([1]).dataSync()));
+			ff.ys.push(Array.from(layer0.max([2]).dataSync()));
+			
+			console.log(target + ': x: ' + loc.x + ', y: ' + loc.y +' score: ' + loc.score); 
+		}
+	}
 	
-	filterFocus.makeInputXs();
+	//filterFocus.makeInputXs();
 	
-	var layer0 = filterFocus.model(filterFocus.inputXs);
 	
-	var loc = drawLocation(layer0);
-	
-	console.log(target + ': value: ' + (value/255) + ', x: ' + loc.x + ', y: ' + loc.y +' score: ' + loc.score); 
 }
 
 function createTestImage(){
-	const canvas = document.getElementById("canvas_ori");
-	const ctx = canvas.getContext("2d");
-	canvas.width = 100;
-	canvas.height = 30;
+	var width = 100;
+	var height = 30;
 		
 	const inpLabel =  document.getElementById("input_label");
 	const label = inpLabel.value;
 	
-	ctx.fillStyle="black";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+	ff.ctx.fillStyle="black";
+  ff.ctx.fillRect(0,0,width,height);
   
-	ctx.font = FONT;
+	ff.ctx.font = FONT;
 	
-	ctx.fillStyle="white";
-  ctx.fillText(label,5,20);
-  inputImageDataStack = [ctx.getImageData(0,0,canvas_ori.width, canvas_ori.height)];
+	ff.ctx.fillStyle="white";
+  ff.ctx.fillText(label,5,20);
+  inputImageDataStack = [ff.ctx.getImageData(0,0,width, height)];
   
   var value=0;
   for(var i=0;i<12000;i++)
@@ -120,6 +206,13 @@ var filterFocus = {
 	STRIDES_1: 1,
 };
 
+filterFocus.makeAFilter = function(data){
+
+	filterFocus.filterStack = dl.tidy(() => {
+			return makeTensorFromPixels(data); //xs[1]; //dl.stack(xs,2); //
+		});
+};
+
 filterFocus.makeFilters = function(target){
 	var xs = [];
 	for(var i=0;i<iDataStack.length;i++){
@@ -131,7 +224,7 @@ filterFocus.makeFilters = function(target){
 	}
 
 	filterFocus.filterStack = dl.tidy(() => {
-			return xs[1]; //dl.stack(xs,2);
+			return xs[1]; //dl.stack(xs,2); //
 		});
 };
 
@@ -149,7 +242,7 @@ filterFocus.makeInputXs = function(){
 filterFocus.initialize = function(){
 	filterFocus.INPUT_IMAGE_WIDTH = inputImageDataStack[0].width;
 	filterFocus.INPUT_IMAGE_HEIGHT = inputImageDataStack[0].height;
-
+	
 }
 
 // compute convolution over the input image for each filter

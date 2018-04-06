@@ -68,6 +68,8 @@
 // allow predictions on unlabled only
 // 
 // add configuration of strides and outlayer in model
+// !! corrected bug on sort function for numbers: 
+//			floatArray.slice().sort((a, b)=>{return b-a})
 ////////////////////////////////////////////
 // Test on Encoder and Decoder
 // !!Disable CORs on Chrome:
@@ -655,7 +657,7 @@ function makePredictionsByBatch(from,num){
 	// the index is the forcasted character wrt labelRevD
 	function getIndicesOfHighest(array,n=1){
 		var res=[];
-		const sorted=array.slice().sort().reverse(); // sort on slice prevent change the original array
+		const sorted=array.slice().sort((a, b)=>{return b-a}); // sort on slice prevent change the original array
 		for(var i=0;i<n;i++)
 			res.push(array.indexOf(sorted[i]));
 		return res;
