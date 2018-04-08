@@ -2,7 +2,7 @@
 <html><head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <script src="montreal_files/deeplearnlatest.js"></script>
-<script src="singleCharGenerator1.js"></script>
+<script src="singleCharGenerator2.js"></script>
 <script src="capSingleModel2.js"></script>
 </head>
 
@@ -51,12 +51,48 @@ var inputImageDataStack = [];
 //// use conv and filters to detect the char set /////
 //////////////////////////////////////////////////////
 var ff = {
+	weights : [],
+	filterStack : {},
+	INPUT_IMAGE_WIDTH: 100,
+	INPUT_IMAGE_HEIGHT: 30,
+	STRIDES_1: 1,
 	ctx : document.getElementById("canvas_ori").getContext("2d"),
 	ctxOut : document.getElementById("canvas_out").getContext("2d"),
 	scores : [],
-	ys : [],
-	dl_layers:[],
 };
+
+function drawBox(idx,color="#FF0000"){
+	ff.ctxOut.strokeStyle=color;
+	ff.ctxOut.strokeRect(idx-11,1,21,29);
+}
+
+function drawVert(idx,color="#FF0000"){
+	ff.ctxOut.strokeStyle=color;
+	ff.ctxOut.strokeRect(idx,1,1,29);
+}
+
+function drawLabelOnCanvas(x){
+	console.log(x.val.label,x.val.filter_idx,x.idx,x.val.y_idx);
+	for(var i=0;i<iDataStack.length;i++){
+		var idata = iDataStack[i];
+		if(idata.label==x.val.label && (i%3==x.val.filter_idx)){
+			// change color to green?
+			var draw_x = x.idx-10;
+			var draw_y = x.val.y_idx-10;
+			var imgout = ff.ctxOut.getImageData(draw_x,draw_y,CANVAS_SIZE,CANVAS_SIZE);
+			for(var j=0; j<idata.data.length; j+=4){
+				if(idata.data[j]>0){
+					imgout.data[j] = 0; //idata.data[j];
+					imgout.data[j+1] = idata.data[j];
+					imgout.data[j+2] = 0; //idata.data[j+2];
+				}
+			};
+			
+			ff.ctxOut.putImageData(imgout, draw_x, draw_y);
+		}
+	}
+}
+
 function drawLocation(layer0){
 	var center_x = layer0.max([1]).argMax().dataSync()[0];
 	var center_y = layer0.max([2]).argMax().dataSync()[0];
@@ -67,108 +103,96 @@ function drawLocation(layer0){
 	//ctx.strokeRect(0,0,21,21);
 	return {x:center_x, y:center_y, score: score};
 }
+function graphToLabelNear(idx,d=5){
+	var res=[];
+	for(var i=idx-d;i<=idx+d;i++){
+		if(i>=0 && i<=100){
+			res.push(topsAt(i,1)[0].label);
+		}
+	}
+	return res;
+}
+function topsAt(idx,n=5){
+	var col=[];
+	for(var j=0;j<ff.scores.length;j++){ // 75
+		col.push({label: ff.scores[j].label, filter_idx:j%3, val:ff.scores[j].graph[idx],y_idx:ff.scores[j].y_idx});
+	}
+	//console.log(col);
+	var sortedMax = col.sort((a, b)=>{return (b.val-a.val)});
+	return sortedMax.slice(0,n);
+}
 
-function nMaxOf(arr,n=5){
+function topsNear(idx){
+	return [topsAt(idx-1,3),topsAt(idx,3),topsAt(idx+1,3)];
+}
+
+function nLocalMaxesOf(arr){
 	var newArray = Array.from(arr,(x,i)=>{return {idx:i,val:x};});
-	console.log(newArray);
+	//console.log(newArray);
 	var localMax=[];
 	for(var i=1;i<newArray.length-1;i++){
-		if(newArray[i-1].val<newArray[i].val && newArray[i+1].val<newArray[i].val){
+		if(newArray[i-1].val.val<newArray[i].val.val && newArray[i+1].val.val<newArray[i].val.val){
 			localMax.push(newArray[i]);
 		}
 	}
-	console.log(localMax);
-	var sortedMax = localMax.sort((a, b)=>{return (b.val-a.val)});
+	//console.log(localMax);
+	var sortedMax = localMax.sort((a, b)=>{return (b.val.val-a.val.val)});
 	return sortedMax;
 }
+
 function findCharXLocations(){
 	var idxs = [];
-	for(var i=0; i<ff.scores[0].length;i++){ // 100
-		var someMax=0;
+	for(var i=0; i<ff.scores[0].graph.length;i++){ // 100
+		var col=[];
 		for(var j=0;j<ff.scores.length;j++){ // 75
-			//find max
-			if(ff.scores[j][i]>someMax) 
-				someMax = ff.scores[j][i];
+			col.push({label: ff.scores[j].label, filter_idx:j%3, val:ff.scores[j].graph[i],y_idx:ff.scores[j].y_idx});
 		}
-		//console.log(someMax);
-		var conv=1;
-		for(var j=0;(someMax!==0) && (j<ff.scores.length);j++){
-			conv *= ff.scores[j][i]/someMax;
-		}
-		//console.log('i: ' + i + 'conv: ' + conv);
-		idxs.push(someMax==0?0:conv);
-	}
+		//console.log(col);
+		var sortedMax = col.sort((a, b)=>{return (b.val-a.val)});
 	
+		if(sortedMax.length)
+			idxs.push(sortedMax[0]);
+		else
+			idxs.push({filter_idx:75,val:0});
+	}
+	console.log(idxs);
 	return idxs;
 }
-
-function testAllChar(){
-	//var value = createTestImage()-(3000*255);
-	
-	filterFocus.initialize();
-	filterFocus.makeInputXs();
-	
-	for(var i=0;i<iDataStack.length;i++){
-		var value = 0;
-		for(var j=0;j<(21*21*4);j++){
-			value += iDataStack[i].data[j];
-		}
-		
-		console.log(iDataStack[i].label + ': ' + (value-255*21*21)/3/255);
-	}
-	
-	ff = {
-		ctx : document.getElementById("canvas_ori").getContext("2d"),
-		ctxOut : document.getElementById("canvas_out").getContext("2d"),
-		scores : [],
-		ys : [],
-		dl_layers:[],
-	};
-	
-	ff.ctx.beginPath();
-	for(let label of _LABELS){
-		if(label!=='none')
-			test(label);
-	};
-	
-	var top5 = nMaxOf(findCharXLocations()).slice(0,5);
-	console.log(top5);
-	for(var i=0; i<5; i++){
-		ff.ctxOut.strokeStyle="#FFFFFF";
-		ff.ctxOut.strokeRect(top5[i].idx-11,1,21,29);
-	}
-	ff.ctx.closePath();
-	
-	ff.ctxOut.beginPath();
-	
-	ff.ctxOut.closePath();
-};
 
 function test(target){
 	//var value = createTestImage()-(3000*255);
 	
-	//filterFocus.initialize();
+	//ff.initialize();
 	
-	//filterFocus.makeFilters(target);
+	//ff.makeFilters(target);
 	for(var i=0;i<iDataStack.length;i++){
 		var data = iDataStack[i];
 		
 		if(data.label == target){
-			filterFocus.makeAFilter(data);
-			console.log('made a filter');
-			var layer0 = filterFocus.model(filterFocus.inputXs);
-			console.log('layer0 computed');
-			var loc = drawLocation(layer0);
+			ff.makeAFilter(data);
+			//console.log('made a filter');
+			var layer0 = ff.model(ff.inputXs);
+			//console.log('layer0 computed');
+			//var loc = drawLocation(layer0);
+			//loc.data = data;
+			//loc.score = loc.score / ff.weights[data.label];
 			
-			ff.dl_layers.push(layer0);
-			ff.scores.push(Array.from(layer0.max([1]).dataSync()));
-			ff.ys.push(Array.from(layer0.max([2]).dataSync()));
+			//ff.loc.push(loc);
 			
-			console.log(target + ': x: ' + loc.x + ', y: ' + loc.y +' score: ' + loc.score); 
+			ff.scores.push({
+												graph: Array.from(layer0.max([1]).dataSync(),(x)=>{return (x/ff.weights[data.label]);}), // /ff.weights[data.label]
+												y_idx: layer0.max([2]).argMax().dataSync()[0],
+												filter: i%3, 
+												label: data.label
+											});
+			
+			//ff.ys.push(Array.from(layer0.max([2]).dataSync()));
+			
+			//console.log(target + ': x: ' + loc.x + ', y: ' + loc.y +' score: ' + loc.score); 
 		}
 	}
 	
-	//filterFocus.makeInputXs();
+	//ff.makeInputXs();
 	
 	
 }
@@ -199,21 +223,14 @@ function createTestImage(){
 
 // get image from inputImageDataStack using the Target elements
 // create a filterStack
-var filterFocus = {
-	filterStack : {},
-	INPUT_IMAGE_WIDTH: 100,
-	INPUT_IMAGE_HEIGHT: 30,
-	STRIDES_1: 1,
-};
+ff.makeAFilter = function(data){
 
-filterFocus.makeAFilter = function(data){
-
-	filterFocus.filterStack = dl.tidy(() => {
+	ff.filterStack = dl.tidy(() => {
 			return makeTensorFromPixels(data); //xs[1]; //dl.stack(xs,2); //
 		});
-};
+}
 
-filterFocus.makeFilters = function(target){
+ff.makeFilters = function(target){
 	var xs = [];
 	for(var i=0;i<iDataStack.length;i++){
 		var data = iDataStack[i];
@@ -223,37 +240,46 @@ filterFocus.makeFilters = function(target){
 		}
 	}
 
-	filterFocus.filterStack = dl.tidy(() => {
+	ff.filterStack = dl.tidy(() => {
 			return xs[1]; //dl.stack(xs,2); //
-		});
-};
-
-filterFocus.makeInputXs = function(){
-	var xs=[];
-	for(var i=0 ;i<inputImageDataStack.length;i++){
-		var data = inputImageDataStack[i];
-		xs.push(makeTensorFromPixels(data).as2D(filterFocus.INPUT_IMAGE_WIDTH, filterFocus.INPUT_IMAGE_HEIGHT));
-	};
-	filterFocus.inputXs = dl.tidy(() => {
-			return xs[0]; //dl.stack(xs,0);
 		});
 }
 
-filterFocus.initialize = function(){
-	filterFocus.INPUT_IMAGE_WIDTH = inputImageDataStack[0].width;
-	filterFocus.INPUT_IMAGE_HEIGHT = inputImageDataStack[0].height;
+ff.makeTensorFromPixels = function(idata){ //NOP DOES NOT WORK
+	const x_tensor = dl.tidy(() => {
+		return dl.cast(dl.fromPixels(idata).slice([0,0,0],[idata.width,idata.height,1]).squeeze(),"float32").div(dl.scalar(255.0,"float32"));
+	});
+	
+	return x_tensor;
+}
+
+ff.makeInputXs = function(sample=-1){
+	var xs=[];
+	for(var i=0 ;i<inputImageDataStack.length;i++){
+		var data = inputImageDataStack[i];
+		xs.push(makeTensorFromPixels(data));//.as2D(ff.INPUT_IMAGE_WIDTH, ff.INPUT_IMAGE_HEIGHT));
+	};
+	ff.inputXs = dl.tidy(() => {
+			sample = sample<0?inputImageDataStack.length-1:sample;
+			return xs[sample]; //dl.stack(xs,0);
+		});
+}
+
+ff.initialize = function(){
+	ff.INPUT_IMAGE_WIDTH = inputImageDataStack[0].width;
+	ff.INPUT_IMAGE_HEIGHT = inputImageDataStack[0].height;
 	
 }
 
 // compute convolution over the input image for each filter
-filterFocus.model = function(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
-  const xs = inputXs.as4D(-1, filterFocus.INPUT_IMAGE_HEIGHT, filterFocus.INPUT_IMAGE_WIDTH, 1);
+ff.model = function(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
+  const xs = inputXs.as4D(-1, inputXs.shape[0], inputXs.shape[1], 1);
 
-  const strides1 = filterFocus.STRIDES_1;
+  const strides1 = ff.STRIDES_1;
   const pad1 = 0;
 
   const layer1 = dl.tidy(() => {
-    return xs.conv2d(filterFocus.filterStack.as4D(CANVAS_SIZE,CANVAS_SIZE,1,1), 1, 'same');
+    return xs.conv2d(ff.filterStack.as4D(CANVAS_SIZE,CANVAS_SIZE,1,1), 1, 'same');
         //.relu();
         //.maxPool([2, 2], strides1, pad1);
   });
@@ -263,6 +289,88 @@ filterFocus.model = function(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
 
 // display the resulting vector
  
+function testAllChar(sample){
+	//createTestImage()-(3000*255);
+	
+	ff.initialize(); console.log('initialized');
+	ff.makeInputXs(sample); console.log('made input xs');
+	
+	// weights
+	var weight=0;
+	for(var i=0;i<iDataStack.length;i++){
+		
+		for(var j=0;j<(21*21*4);j+=4){
+			weight += iDataStack[i].data[j]*iDataStack[i].data[j]/255/255;
+		}
+		if((i+1)%3==0){
+			ff.weights[iDataStack[i].label] = weight/3;
+			//console.log(iDataStack[i].label + ' weight: ' + (weight/3));
+			weight=0;
+		};
+	}
+	
+	ff.filterStack = {};
+	ff.scores = [];
+	ff.ys = [];
+	ff.dl_layers=[];
+	
+	ff.ctx.beginPath();
+	for(let label of _LABELS){
+		if(label!=='none')
+			test(label);
+	};
+	
+	var top = nLocalMaxesOf(findCharXLocations()).slice(0,15);
+	console.log(top);
+	var col=[null,null,null,null,null];
+	for(var i=0; i<top.length; i++){
+		//drawBox(top[i].idx);
+		if(top[i].idx>=(4) && top[i].idx<=(18) && col[0]==null)
+				col[0] = top[i];
+		if(top[i].idx>=(27) && top[i].idx<=(35) && col[1]==null)
+				col[1] = top[i];
+		if(top[i].idx>=(47) && top[i].idx<=(53) && col[2]==null)
+				col[2] = top[i];
+		if(top[i].idx>=(60) && top[i].idx<=(75) && col[3]==null)
+				col[3] = top[i];
+		if(top[i].idx>=(80) && top[i].idx<=(93) && col[4]==null)
+				col[4] = top[i];
+		
+	}
+	ff.ctx.closePath();
+	try{
+		var res=[];
+		var res_i=[];
+		for(var i=0; i<col.length;i++){
+			var x = col[i];
+			if(x!==null){
+				switch(x.val.filter_idx){
+					case 0:
+						res.push(x.val.label+'-');
+						break;
+					case 1:
+						res.push(x.val.label);
+						break;
+					default:
+						res.push(x.val.label+'+');
+						break;
+				}
+				res_i.push(x.idx);
+				drawVert(x.idx);
+				drawLabelOnCanvas(x);
+			} else {
+				res.push('?');
+				res_i.push('?');
+			}
+		};
+		console.log(res_i);
+		console.log(res);
+	} catch(err){
+		console.log(col);
+	}
+}
+
+readyNow = testAllChar;
 
 </script>
 

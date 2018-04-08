@@ -323,6 +323,9 @@ function capture(iData){
 
 /////////////////////////////////////////////////
 var num_files = 0;
+var readyNow = function(){
+	console.log('ready!');
+};
 
 var img = new Image();
 img.crossOrigin = "Anonymous";
@@ -341,7 +344,7 @@ img.onload = function() {
 		//iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
 	}
 	
-	var th = 220;
+	var th = 160;
 	for(var i = 0; i<iData.data.length;i+=4){
 	  if(iData.data[i]>th||iData.data[i+1]>th||iData.data[i+2]>th){
 	    iData.data[i] = iData.data[i+1] = iData.data[i+2] = 255;
@@ -363,6 +366,9 @@ img.onload = function() {
 	addEventToCanvas();
 	//setLabelList(firstLabelList);
 	report.send('Total files loaded: ' + num_files);
+	
+	// FilterFocus
+	readyNow();
   } else load();
 };
 

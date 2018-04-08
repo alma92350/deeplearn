@@ -21,6 +21,47 @@ function generateSample(){
 	Angle = (Angle+1)%(ANGLE_AMP/ANGLE_STEP);
 }
 
+function computeMargins(ctx){
+	var top=0,bottom=0,left=0,right=0;
+	var inc_top=1,inc_bottom=1,inc_left=1,inc_right=1;
+	var idata = ctx.getImageData(0,0,CANVAS_SIZE,CANVAS_SIZE);
+	var count_h=0,count_v=0;
+	var topLine=0,bottomLine=0,leftLine=0,rightLine=0;
+	
+	// compute top and bottom margins
+	for(var i=0; i<CANVAS_SIZE/2;i++){
+		for(var j=0;j<CANVAS_SIZE;j++){
+			topLine += idata.data[count_h];
+			bottomLine += idata.data[CANVAS_SIZE*CANVAS_SIZE*4-4-count_h];
+			count_h+=4;
+		};
+		// reset increment when data detected
+		inc_top = topLine==0?inc_top:0;
+		inc_bottom = bottomLine==0?inc_bottom:0;
+		top += inc_top;
+		bottom += inc_bottom;
+	}
+	
+	// compute left and right margins
+	for(var i=0; i<CANVAS_SIZE/2;i++){
+		for(var j=0;j<CANVAS_SIZE;j++){
+			leftLine += idata.data[count_v+i*4];
+			rightLine += idata.data[CANVAS_SIZE*CANVAS_SIZE*4-4-count_v-i*4];
+			count_v+=4*CANVAS_SIZE;
+		};
+		count_v=0;		
+		inc_left = leftLine==0?inc_left:0;
+		inc_right = rightLine==0?inc_right:0;
+		left += inc_left;
+		right += inc_right;
+	}
+	
+	var change_to_y = -parseInt(Math.abs(top-bottom)<2?0:((top-bottom)/2));
+	var change_to_x = -parseInt(Math.abs(left-right)<2?0:((left-right)/2));
+	
+	return {change_to_x,change_to_y};
+}
+
 function drawLabel(label,x,y,ctx){
 
   ctx.fillStyle="black";
@@ -30,6 +71,18 @@ function drawLabel(label,x,y,ctx){
 	
 	ctx.fillStyle="white";
   ctx.fillText(label,x,y);
+  var margins = computeMargins(ctx);
+  //console.log(label,margins);
+  
+  ctx.fillStyle="black";
+  ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+  
+	//ctx.font = FONT;
+	
+	ctx.fillStyle="white";
+  ctx.fillText(label,x+margins.change_to_x,y+margins.change_to_y);
+	
+  //console.log(label,computeMargins(ctx));
 }
 
 function rotateCanvasByAngle(angle,ctx){
