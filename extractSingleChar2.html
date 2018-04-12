@@ -92,7 +92,7 @@ function drawAllLabels(){
 	ff.ctxOut2.putImageData(imgout, 0, 0);
 }
 
-function drawLabelOnCanvas(x){
+function drawLabelOnCanvas(x,ctxo=ff.ctxOut,green=true){
 	console.log(x.val.label,x.val.filter_idx,x.idx,x.val.y_idx);
 	for(var i=0;i<iDataStack.length;i++){
 		var idata = iDataStack[i];
@@ -100,16 +100,15 @@ function drawLabelOnCanvas(x){
 			// change color to green?
 			var draw_x = x.idx-10;
 			var draw_y = x.val.y_idx-10;
-			var imgout = ff.ctxOut.getImageData(draw_x,draw_y,CANVAS_SIZE,CANVAS_SIZE);
+			var imgout = ctxo.getImageData(draw_x,draw_y,CANVAS_SIZE,CANVAS_SIZE);
 			for(var j=0; j<idata.data.length; j+=4){
 				if(idata.data[j]>0){
-					imgout.data[j] = 0; //idata.data[j];
+					imgout.data[j] = green?0:Math.max(idata.data[j],imgout.data[j]);
 					imgout.data[j+1] = idata.data[j];
-					imgout.data[j+2] = 0; //idata.data[j+2];
+					imgout.data[j+2] = green?0:Math.max(idata.data[j+2],imgout.data[j+2]);
 				}
 			};
-			
-			ff.ctxOut.putImageData(imgout, draw_x, draw_y);
+			ctxo.putImageData(imgout, draw_x, draw_y);
 		}
 	}
 }
@@ -217,8 +216,49 @@ function test(target){
 	
 	
 }
-
+//console.log(x.val.label,x.val.filter_idx,x.idx,x.val.y_idx);
 function createTestImage(){
+	var width = 100;
+	var height = 30;
+	var loc_x = [15,30,47,67,87];
+	var loc_y = [11,9,15,13,11];
+		
+	const labels =  document.getElementById("input_label").value.split(',');
+	
+	ff.ctx.fillStyle="black";
+  ff.ctx.fillRect(0,0,width,height);
+  ff.ctxOut.fillStyle="black";
+  ff.ctxOut.fillRect(0,0,width,height);
+  
+  for(var i=0; i<labels.length;i++){
+  	var fidx = 1;
+  	
+  	switch(labels[i][1]){
+  		case '+':
+  			fidx = 2;
+  			break;
+  		case '-':
+  			fidx = 0;
+  			break;
+  		default:
+  			fidx = 1;
+  	}
+  	
+  	drawLabelOnCanvas({
+  						idx:loc_x[i],
+  						val: { 
+  										label:labels[i][0],
+  										filter_idx:fidx,
+  										y_idx:loc_y[i],
+  									}
+  					},ff.ctx,false);
+  }
+  
+  inputImageDataStack = [ff.ctx.getImageData(0,0,width, height)];
+	
+}
+
+function createTestImage_0(){
 	var width = 100;
 	var height = 30;
 		
@@ -292,6 +332,8 @@ ff.initialize = function(){
 	
 	//var idata = ff.ctxOut.getImageData(0,0,canvas_out.width,canvas_out.height);
 	//ff.ctxOut2.putImageData(idata,0,0);
+
+	
 }
 
 // compute convolution over the input image for each filter
@@ -313,7 +355,7 @@ ff.model = function(inputXs) {	//: dl.Tensor2D : dl.Tensor2D
 // display the resulting vector
 
 function testAllChar(sample){
-	//createTestImage()-(3000*255);
+	//createTestImage();//-(3000*255);
 	
 	ff.initialize(); console.log('initialized');
 	ff.makeInputXs(sample); console.log('made input xs');
