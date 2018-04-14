@@ -92,6 +92,27 @@ function drawAllLabels(){
 	ff.ctxOut2.putImageData(imgout, 0, 0);
 }
 
+function drawLabelAt(label,filter,idx,ctxo=ff.ctxOut,red=true){
+	for(var i=0;i<iDataStack.length;i++){
+		var idata = iDataStack[i];
+		if(idata.label==label && (i%3==filter)){
+		// change color to red?
+			var draw_x = idx-10;
+			var draw_y = ff.scores[i].ys[idx]-10;
+			var imgout = ctxo.getImageData(draw_x,draw_y,CANVAS_SIZE,CANVAS_SIZE);
+			for(var j=0; j<idata.data.length; j+=4){
+				if(idata.data[j]>0){
+					imgout.data[j] = idata.data[j];
+					imgout.data[j+1] = red?0:Math.max(idata.data[j+1],imgout.data[j+1]);
+					imgout.data[j+2] = red?0:Math.max(idata.data[j+2],imgout.data[j+2]);
+					imgout.data[j+3] = 50;
+				}
+			};
+			ctxo.putImageData(imgout, draw_x, draw_y);
+		}
+	}
+}
+
 function drawLabelOnCanvas(x,ctxo=ff.ctxOut,green=true){
 	console.log(x.val.label,x.val.filter_idx,x.idx,x.val.y_idx);
 	for(var i=0;i<iDataStack.length;i++){
@@ -106,6 +127,7 @@ function drawLabelOnCanvas(x,ctxo=ff.ctxOut,green=true){
 					imgout.data[j] = green?0:Math.max(idata.data[j],imgout.data[j]);
 					imgout.data[j+1] = idata.data[j];
 					imgout.data[j+2] = green?0:Math.max(idata.data[j+2],imgout.data[j+2]);
+					imgout.data[j+3] = 50;
 				}
 			};
 			ctxo.putImageData(imgout, draw_x, draw_y);
@@ -202,6 +224,7 @@ function test(target){
 			ff.scores.push({
 												graph: Array.from(layer0.max([1]).dataSync(),(x)=>{return (x/ff.weights[data.label]);}), // /ff.weights[data.label]
 												y_idx: layer0.max([2]).argMax().dataSync()[0],
+												ys: layer0.argMax([1]).dataSync(),
 												filter: i%3, 
 												label: data.label
 											});
@@ -422,7 +445,7 @@ function testAllChar(sample){
 						break;
 				}
 				res_i.push(x.idx);
-				drawVert(x.idx);
+				//drawVert(x.idx);
 				drawLabelOnCanvas(x);
 			} else {
 				res.push('?');
