@@ -78,6 +78,7 @@ function createUserMessage(userStr, messageStr) {
 ws.onopen = function(ev) {
 	createSystemMessage('[Connected]');
 	resetTimeout();
+	sendMessage('hi');
 };
 
 ws.onclose = function(ev) {
@@ -88,6 +89,16 @@ ws.onmessage = function(ev) {
 	resetTimeout();
 	var payload = JSON.parse(ev.data);
 	if(payload.user=='keep alive') return;
+	
+	switch(payload.message){
+		case "hi":
+			sendMessage('hello!');
+			break;
+			
+		default:
+			break;
+	}
+	
 	createUserMessage(payload.user, payload.message);
 
 	var chat = document.getElementById('chat_box');
@@ -95,9 +106,9 @@ ws.onmessage = function(ev) {
 	
 };
 
-function sendMessage() {
+function sendMessage(mess=null) {
 	var user = document.getElementById('user');
-	var message = document.getElementById('message');
+	var message = mess==null?document.getElementById('message'):{value:mess};
 
 	var payload = {
 	  message: message.value,
