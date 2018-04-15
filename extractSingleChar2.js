@@ -262,18 +262,18 @@ function addEventToCanvas(){
 
 /////////////////////////////////////////////////
 
-function displayStack(){
+function displayStack(iStack=iDataStack){
   // add the canvas
   const div_res = document.getElementById('div_results');
   const Columns = 5;
-  const Rows = Math.floor(iDataStack.length / 5) + (iDataStack.length%5) ;
+  const Rows = Math.floor(iStack.length / 5) + (iStack.length%5) ;
 
   var table = '<table border="5px"><tbody>';
   var count=0;
-  for(var row=0; row<Rows && count<iDataStack.length; row++){
+  for(var row=0; row<Rows && count<iStack.length; row++){
 	  var line1="",line2="";
-	  for(var i=0; i<Columns && count<iDataStack.length; i++,count++){
-	  	if(true){ //iDataStack[count].label!=='none'){ // for filterFocus
+	  for(var i=0; i<Columns && count<iStack.length; i++,count++){
+	  	if(true){ //iStack[count].label!=='none'){ // for filterFocus
 				// stacked display format
 				line1 += '<td id="td1_'+count+'" align="center" width=100><canvas id="div_canvas_'+count+
 								'" width='+char_width+
@@ -281,7 +281,7 @@ function displayStack(){
 								' style="center"></canvas></td>';
 						
 				line2 += '<td id="td2_'+count+'" align="center"><label id="div_label_'+count+
-								'" style="center"> label: '+iDataStack[count].label+
+								'" style="center"> label: '+iStack[count].label+
 								'</label></td>';
 			} else {
 				i--; // compensate increase of column
@@ -294,11 +294,11 @@ function displayStack(){
 
   // display in canvas
   
-  for(var i=0;i<iDataStack.length;i++){
-  	if(true) { // iDataStack[i].label!=='none'){ // for filterFocus
+  for(var i=0;i<iStack.length;i++){
+  	if(true) { // iStack[i].label!=='none'){ // for filterFocus
 			var canvas = document.getElementById('div_canvas_'+i);
 		  var ctx = canvas.getContext('2d');
-			ctx.putImageData(iDataStack[i],0,0);
+			ctx.putImageData(iStack[i],0,0);
 		}
   };
 }
@@ -344,7 +344,7 @@ img.onload = function() {
 		//iData = ctx.getImageData(0,0,canvas_out.width, canvas_out.height);
 	}
 	
-	var th = 160;
+	var th = 200;
 	for(var i = 0; i<iData.data.length;i+=4){
 	  if(iData.data[i]>th||iData.data[i+1]>th||iData.data[i+2]>th){
 	    iData.data[i] = iData.data[i+1] = iData.data[i+2] = 255;
@@ -1109,8 +1109,11 @@ var report = {
 				} else {
 					localStorage['wsUri'] = wsUri;
 				}
-				report.ws = new WebSocket(wsUri);
-				
+				// testing
+				report.ws = {};//new WebSocket(wsUri);
+				report.ws.send = function(){};
+				initialize();
+				//////
 				report.ws.onopen = function(ev) {
 					logAndDone.log('[Connected]');
 					//////////////////////////

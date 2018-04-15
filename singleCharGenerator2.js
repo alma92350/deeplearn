@@ -1,5 +1,5 @@
-CANVAS_SIZE = 21;
-FONT = "22px Arial";
+CANVAS_SIZE = 22;
+FONT = "23px Arial";
 CHAR_X = 2; //9;
 CHAR_Y = 18; //22;
 LINE_WIDTH = 20;
