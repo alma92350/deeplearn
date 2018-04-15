@@ -85,12 +85,14 @@ ws.onclose = function(ev) {
 };
 
 ws.onmessage = function(ev) {
+	resetTimeout();
 	var payload = JSON.parse(ev.data);
+	if(payload.user=='keep alive') return;
 	createUserMessage(payload.user, payload.message);
 
 	var chat = document.getElementById('chat_box');
 	chat.scrollTop = chat.scrollHeight;
-	resetTimeout();
+	
 };
 
 function sendMessage() {
