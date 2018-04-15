@@ -2,6 +2,7 @@
     
 
 <head>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8">
 	<meta name="viewport" content="width=320, initial-scale=1">
   <title>Chat</title>
 </head>
@@ -24,14 +25,14 @@
 <script type="text/javascript">
 
 var hashes = window.location.hash.substr(1).split('#');
-var wsUri = hashes[0];
+var wsUri = "wss://" + hashes[0];
 var ws = new WebSocket(wsUri);
 var timer = null;
 
 try{
-	document.getElementById('user').innerHTML = hashes[1];
-}catch(err){
-	alert('Enter a user name');
+	document.getElementById('user').value = hashes[1];
+} catch (err){
+	alert('Please provide a username');
 }
 
 function resetTimeout(){
