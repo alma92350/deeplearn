@@ -29,7 +29,7 @@ var ws = new WebSocket(wsUri);
 var timer = null;
 
 try{
-	document.getElementById('user').value = hashes[1];
+	document.getElementById('user').innerHTML = hashes[1];
 }catch(err){
 	alert('Enter a user name');
 }
